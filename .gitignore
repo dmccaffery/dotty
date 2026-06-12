@@ -4,3 +4,6 @@ dist/
 
 # Node tooling
 node_modules/
+
+# Claude Plans
+.claude/plans/
