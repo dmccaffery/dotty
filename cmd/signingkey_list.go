@@ -1,0 +1,137 @@
+// MIT License
+//
+// Copyright (c) 2026 Bitwise Media Group
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+package main
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/bitwise-media-group/dotty/internal/cli"
+	"github.com/bitwise-media-group/dotty/internal/securitykey"
+	"github.com/bitwise-media-group/dotty/internal/signingkey"
+	"github.com/bitwise-media-group/dotty/internal/tui"
+)
+
+var signingKeyListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List the signing keys on plugged-in security keys.",
+	Long: `Show the signing keys of all currently plugged-in YubiKeys in a
+fuzzy-filterable table (serial, aliases, key type, username). Selecting a row
+prints its private key stub and public key; esc exits without printing.
+Unlike the other signing-key verbs, list never asks you to pick a key first.
+Without a terminal the table prints plainly and nothing is selectable.`,
+	Example: `  dotty signing-key list
+  dotty signing-key list --username=deavon
+  dotty ssh-key list --security-key=work`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ios := cli.System()
+		dataDir, err := cli.DataDir()
+		if err != nil {
+			return err
+		}
+		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		if err != nil {
+			return err
+		}
+
+		plugged, err := securitykey.ListSerials(cmd.Context(), newRunner(ios))
+		if err != nil {
+			return err
+		}
+		serials := plugged
+		if ref := signingKeyFlags.SecurityKey; ref != "" {
+			want := ref
+			if !securitykey.IsSerial(ref) {
+				if want, err = store.ResolveName(ref); err != nil {
+					return err
+				}
+			}
+			serials = nil
+			for _, s := range plugged {
+				if s == want {
+					serials = []string{s}
+				}
+			}
+		}
+		if len(serials) == 0 {
+			tui.Infof(ios, "No matching YubiKeys plugged in")
+			return nil
+		}
+
+		refs, err := signingkey.Scan(dataDir, serials, signingKeyFlags.Username)
+		if err != nil {
+			return err
+		}
+		if len(refs) == 0 {
+			tui.Infof(ios, "No signing keys found for the plugged-in YubiKeys (run `dotty signing-key new`)")
+			return nil
+		}
+
+		aliases := store.AliasesBySerial()
+		headers := []string{"SERIAL", "ALIASES", "TYPE", "USERNAME"}
+		rows := make([]tui.TableRow, len(refs))
+		for i, ref := range refs {
+			var names []string
+			for _, a := range aliases[ref.Serial] {
+				names = append(names, a.Name)
+			}
+			rows[i] = tui.TableRow{
+				Cells: []string{ref.Serial, strings.Join(names, ", "), ref.Type, ref.User},
+				Value: ref.PrivPath,
+			}
+		}
+
+		if !ios.IsInteractive() {
+			fmt.Fprint(ios.Out, tui.RenderTable(headers, rows))
+			return nil
+		}
+
+		value, ok, err := tui.FilterTable(ios, "Signing keys (enter prints the key, esc exits)", headers, rows)
+		if errors.Is(err, tui.ErrNotInteractive) || !ok {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		for _, ref := range refs {
+			if ref.PrivPath == value {
+				priv, pub, err := signingkey.Read(ref)
+				if err != nil {
+					return err
+				}
+				fmt.Fprint(ios.Out, string(priv))
+				fmt.Fprint(ios.Out, string(pub))
+				return nil
+			}
+		}
+		return nil
+	},
+}
+
+func init() {
+	signingKeyCmd.AddCommand(signingKeyListCmd)
+}
