@@ -1,0 +1,87 @@
+// MIT License
+//
+// Copyright (c) 2026 Bitwise Media Group
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+package brewfile
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"slices"
+	"strings"
+)
+
+// NeedsTrust reports whether a brew name is tap-qualified deeply enough to be
+// subject to Homebrew's tap-trust gate: more than one forward slash, e.g.
+// "anomalyco/tap/opencode".
+func NeedsTrust(name string) bool {
+	return strings.Count(name, "/") > 1
+}
+
+// trustList mirrors the `brew trust --json v1` document: flat name lists per
+// kind.
+type trustList struct {
+	Taps     []string `json:"taps"`
+	Formulae []string `json:"formulae"`
+	Casks    []string `json:"casks"`
+	Commands []string `json:"commands"`
+}
+
+// decodeTrustList parses `brew trust --json v1` output.
+func decodeTrustList(data []byte) (trustList, error) {
+	var t trustList
+	if err := json.Unmarshal(data, &t); err != nil {
+		return trustList{}, fmt.Errorf("decode brew trust JSON: %w", err)
+	}
+	return t, nil
+}
+
+// IsTrusted reports whether name is already in Homebrew's trust store for the
+// given kind.
+func IsTrusted(ctx context.Context, r Runner, kind Kind, name string) (bool, error) {
+	out, err := r.Output(ctx, "brew", "trust", "--json", "v1")
+	if err != nil {
+		return false, fmt.Errorf("read brew trust store: %w", err)
+	}
+	t, err := decodeTrustList(out)
+	if err != nil {
+		return false, err
+	}
+	switch kind {
+	case KindFormula:
+		return slices.Contains(t.Formulae, name), nil
+	case KindCask:
+		return slices.Contains(t.Casks, name), nil
+	case KindTap:
+		return slices.Contains(t.Taps, name), nil
+	default:
+		return false, fmt.Errorf("kind %s is not trustable", kind)
+	}
+}
+
+// Trust records name in Homebrew's trust store for the given kind.
+func Trust(ctx context.Context, r Runner, kind Kind, name string) error {
+	if !kind.Trustable() {
+		return fmt.Errorf("kind %s is not trustable", kind)
+	}
+	return r.Run(ctx, "brew", "trust", kind.flag(), name)
+}
