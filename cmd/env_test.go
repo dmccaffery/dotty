@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -158,4 +159,62 @@ func TestEnvRunInFileErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDefaultEnvFileOrErr pins the fallback that env use and env run share when
+// invoked with neither a --namespace nor an --in-file: it resolves a .env.dotty
+// in the working directory and otherwise returns the sentinel that callers pair
+// with usage.
+func TestDefaultEnvFileOrErr(t *testing.T) {
+	t.Run("missing file returns the sentinel", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		got, err := defaultEnvFileOrErr()
+		if !errors.Is(err, errNoDefaultEnvFile) {
+			t.Fatalf("defaultEnvFileOrErr() err = %v, want errNoDefaultEnvFile", err)
+		}
+		if got != "" {
+			t.Errorf("path = %q, want empty", got)
+		}
+	})
+	t.Run("present file resolves", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, defaultEnvFile), []byte("FOO=bar\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(dir)
+		got, err := defaultEnvFileOrErr()
+		if err != nil {
+			t.Fatalf("defaultEnvFileOrErr() err = %v, want nil", err)
+		}
+		if got != defaultEnvFile {
+			t.Errorf("path = %q, want %q", got, defaultEnvFile)
+		}
+	})
+}
+
+// TestEnvRunDefaultEnvFile pins that `env run` with no namespace or in-file
+// flags resolves the environment from a .env.dotty in the working directory,
+// and reports a usage error when there is none. Both paths fail before any
+// keychain access or process exec, so they are safe end-to-end.
+func TestEnvRunDefaultEnvFile(t *testing.T) {
+	t.Run("falls back to .env.dotty", func(t *testing.T) {
+		dir := t.TempDir()
+		// A malformed template proves the fallback file is the one read and
+		// parsed, and like the other run tests it fails before any exec.
+		if err := os.WriteFile(filepath.Join(dir, defaultEnvFile), []byte("OPEN=\"no close\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(dir)
+		err := execDotty(t, "env", "run", "--", "true")
+		if err == nil || !strings.Contains(err.Error(), "unterminated quote") {
+			t.Fatalf("execute = %v, want unterminated quote error", err)
+		}
+	})
+	t.Run("missing .env.dotty errors", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		err := execDotty(t, "env", "run", "--", "true")
+		if err == nil || !strings.Contains(err.Error(), "no .env.dotty") {
+			t.Fatalf("execute = %v, want no .env.dotty error", err)
+		}
+	})
 }

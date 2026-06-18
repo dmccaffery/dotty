@@ -354,7 +354,9 @@ dotty env [--namespace=<ns>] get <KEY | dotty://<namespace>/<key>> [--no-newline
 Command: use
 
 Replace every reference in a template with its value, like `op inject`. The template is read from `--in-file` or stdin
-and written to `--out-file` (created with 0600) or stdout. An unknown or malformed reference is an error.
+and written to `--out-file` (created with 0600) or stdout. An unknown or malformed reference is an error. With neither
+`--namespace` nor `--in-file` and nothing piped in, the template defaults to a `.env.dotty` in the working directory;
+a missing file is an error with usage.
 
 ```text
 dotty env [--namespace=<ns>] use [--in-file=<file>] [--out-file=<file>]
@@ -370,7 +372,8 @@ through untouched. The command inherits the terminal, and dotty exits with its e
 
 With `--in-file`, the environment is built from a `.env` template instead of the whole namespace: every reference is
 resolved from the keychain and every plain `KEY=value` assignment is passed through — like `use`, but the secrets go
-straight to the process and are never written to disk.
+straight to the process and are never written to disk. With neither `--namespace` nor `--in-file`, the template defaults
+to a `.env.dotty` in the working directory; a missing file is an error with usage.
 
 ```text
 dotty env [--namespace=<ns>] run [--in-file=<file>] -- <command> [args...]

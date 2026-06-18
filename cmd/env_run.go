@@ -34,10 +34,15 @@ With --in-file, the environment is built from a .env template instead of the
 whole namespace: every {{ dotty://<namespace>/KEY }} reference is resolved from
 the keychain and every plain KEY=value assignment is passed through, the way env
 use fills a template — but the secrets are handed straight to the process and
-never written to disk.`,
+never written to disk.
+
+With neither --namespace nor --in-file, the template defaults to a .env.dotty in
+the working directory (the same form as --in-file); if there is none, run
+reports an error with usage.`,
 	Example: `  dotty env run --namespace=aws -- aws s3 ls
   dotty env run --namespace=ci -- ./deploy.sh
-  dotty env run --in-file=.env.tmpl -- ./serve`,
+  dotty env run --in-file=.env.tmpl -- ./serve
+  dotty env run -- ./serve   # builds the environment from ./.env.dotty`,
 	// Verbatim passthrough: the child owns its flags, so parsing is off and
 	// --help is handled manually via ExtractFlags.
 	DisableFlagParsing: true,
@@ -60,7 +65,20 @@ never written to disk.`,
 			return errors.New("no command given; usage: dotty env run --namespace=<ns> -- <command> [args...]")
 		}
 
-		extraEnv, err := envRunEnviron(cmd.Context(), ios, namespace, own["in-file"])
+		inFile, hasInFile := own["in-file"]
+		if _, hasNS := own["namespace"]; !hasNS && !hasInFile {
+			// Neither flag given: fall back to the project-local .env.dotty.
+			f, err := defaultEnvFileOrErr()
+			if err != nil {
+				if errors.Is(err, errNoDefaultEnvFile) {
+					_ = cmd.Usage()
+				}
+				return err
+			}
+			inFile = f
+		}
+
+		extraEnv, err := envRunEnviron(cmd.Context(), ios, namespace, inFile)
 		if err != nil {
 			return err
 		}
