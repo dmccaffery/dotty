@@ -35,6 +35,27 @@ func activateForTest(t *testing.T, configDir, name string) (string, *fakeRunner,
 	return dir, r, err
 }
 
+// assertActive checks that dir's active profile resolves to name across the
+// symlink, ActiveDir, and ActiveName.
+func assertActive(t *testing.T, dir, name string) {
+	t.Helper()
+	target, err := os.Readlink(filepath.Join(dir, "active-profile"))
+	if err != nil {
+		t.Fatalf("readlink: %v", err)
+	}
+	if target != name {
+		t.Errorf("symlink target = %q, want relative %q", target, name)
+	}
+	active, err := ActiveDir(dir)
+	if err != nil || active != Dir(dir, name) {
+		t.Errorf("ActiveDir() = %q, %v", active, err)
+	}
+	got, err := ActiveName(dir)
+	if err != nil || got != name {
+		t.Errorf("ActiveName() = %q, %v", got, err)
+	}
+}
+
 func TestActivate(t *testing.T) {
 	t.Run("points the symlink at the profile and dumps a Brewfile", func(t *testing.T) {
 		dir := t.TempDir()
@@ -49,22 +70,7 @@ func TestActivate(t *testing.T) {
 			t.Errorf("Activate() dir = %q, want %q", got, want)
 		}
 
-		target, err := os.Readlink(filepath.Join(dir, "active-profile"))
-		if err != nil {
-			t.Fatalf("readlink: %v", err)
-		}
-		if target != "work" {
-			t.Errorf("symlink target = %q, want relative %q", target, "work")
-		}
-
-		active, err := ActiveDir(dir)
-		if err != nil || active != Dir(dir, "work") {
-			t.Errorf("ActiveDir() = %q, %v", active, err)
-		}
-		name, err := ActiveName(dir)
-		if err != nil || name != "work" {
-			t.Errorf("ActiveName() = %q, %v", name, err)
-		}
+		assertActive(t, dir, "work")
 
 		// No Brewfile existed, so a dump must have been requested.
 		if len(r.calls) != 1 || !strings.Contains(strings.Join(r.calls[0], " "), "bundle dump") {

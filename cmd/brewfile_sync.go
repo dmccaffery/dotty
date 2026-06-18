@@ -40,7 +40,7 @@ removed, dotty shows the list and asks first unless --force is set.`,
 		confirm := func(removals []string) (bool, error) {
 			tui.Warnf(ios, "Syncing will remove brews not in the Brewfile:")
 			for _, line := range removals {
-				fmt.Fprintf(ios.ErrOut, "    %s\n", line)
+				_, _ = fmt.Fprintf(ios.ErrOut, "    %s\n", line)
 			}
 			ok, err := tui.Confirm(ios, "Remove them and continue?", "")
 			if errors.Is(err, tui.ErrNotInteractive) {

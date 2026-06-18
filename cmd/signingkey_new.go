@@ -104,7 +104,9 @@ device as well as the stub.`,
 		}
 
 		if device.Path == "" {
-			tui.Infof(ios, "When ssh-keygen prompts for user presence, touch YubiKey %s (the serial is etched on the key)", device.Serial)
+			tui.Infof(ios,
+				"When ssh-keygen prompts for user presence, touch YubiKey %s (the serial is etched on the key)",
+				device.Serial)
 		}
 		tui.Infof(ios, "ssh-keygen will ask for the key's FIDO PIN")
 		if err := signingkey.Generate(cmd.Context(), runner, signingkey.KeygenOptions{
@@ -121,7 +123,7 @@ device as well as the stub.`,
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(ios.Out, string(pub))
+		_, _ = fmt.Fprint(ios.Out, string(pub))
 		tui.Successf(ios, "Created %s signing key for %q on YubiKey %s", typ, username, device.Serial)
 		tui.Infof(ios, "Stub: %s", stub)
 		tui.Infof(ios, "Set up git commit signing with: dotty signing-key sign --print-git-config")

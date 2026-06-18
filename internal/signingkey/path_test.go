@@ -72,7 +72,8 @@ func writeKey(t *testing.T, dataDir, serial, typ, user, pubLine string) KeyRef {
 		t.Fatal(err)
 	}
 	priv := StubPath(dataDir, serial, typ, user)
-	if err := os.WriteFile(priv, []byte("-----BEGIN OPENSSH PRIVATE KEY-----\nstub\n-----END OPENSSH PRIVATE KEY-----\n"), 0o600); err != nil {
+	stub := "-----BEGIN OPENSSH PRIVATE KEY-----\nstub\n-----END OPENSSH PRIVATE KEY-----\n"
+	if err := os.WriteFile(priv, []byte(stub), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(priv+".pub", []byte(pubLine+"\n"), 0o600); err != nil {

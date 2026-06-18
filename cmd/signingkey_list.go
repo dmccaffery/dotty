@@ -87,7 +87,7 @@ Without a terminal the table prints plainly and nothing is selectable.`,
 		}
 
 		if !ios.IsInteractive() {
-			fmt.Fprint(ios.Out, tui.RenderTable(headers, rows))
+			_, _ = fmt.Fprint(ios.Out, tui.RenderTable(headers, rows))
 			return nil
 		}
 
@@ -104,8 +104,8 @@ Without a terminal the table prints plainly and nothing is selectable.`,
 				if err != nil {
 					return err
 				}
-				fmt.Fprint(ios.Out, string(priv))
-				fmt.Fprint(ios.Out, string(pub))
+				_, _ = fmt.Fprint(ios.Out, string(priv))
+				_, _ = fmt.Fprint(ios.Out, string(pub))
 				return nil
 			}
 		}

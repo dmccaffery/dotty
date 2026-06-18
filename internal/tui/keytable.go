@@ -23,7 +23,9 @@ type TableRow struct {
 // FilterTable presents a fuzzy-filterable, selectable table: typing filters
 // across all columns, enter returns the highlighted row's Value, esc exits
 // with ok == false (the caller prints nothing).
-func FilterTable(ios cli.IOStreams, title string, headers []string, rows []TableRow) (value string, ok bool, err error) {
+func FilterTable(
+	ios cli.IOStreams, title string, headers []string, rows []TableRow,
+) (value string, ok bool, err error) {
 	if !ios.IsInteractive() {
 		return "", false, ErrNotInteractive
 	}

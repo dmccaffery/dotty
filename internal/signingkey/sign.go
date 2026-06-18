@@ -62,7 +62,9 @@ func RewriteSignArgs(
 		}
 		ref, ok := MatchByPublicKey(refs, line)
 		if !ok {
-			return nil, fmt.Errorf("public key in %s does not correspond to any dotty-managed signing key (run `dotty signing-key list`)", args[fileIdx])
+			return nil, fmt.Errorf(
+				"public key in %s does not correspond to any dotty-managed signing key (run `dotty signing-key list`)",
+				args[fileIdx])
 		}
 		out := make([]string, 0, len(args))
 		for i := 0; i < len(args); i++ {

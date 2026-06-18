@@ -70,7 +70,7 @@ func main() {
 
 	rootCmd.SetArgs(dispatchArgs(os.Args))
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "dotty: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "dotty: %v\n", err)
 		var exitErr *cli.ExitError
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.Code) // proxied child's code; git inspects it

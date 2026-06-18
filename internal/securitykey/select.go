@@ -70,8 +70,9 @@ func PickSerial(ios cli.IOStreams, store *Store, serials []string) (string, erro
 
 // SerialLabel renders a serial with its aliases for pickers and tables.
 func SerialLabel(store *Store, serial string) string {
-	var names []string
-	for _, a := range store.AliasesBySerial()[serial] {
+	aliases := store.AliasesBySerial()[serial]
+	names := make([]string, 0, len(aliases))
+	for _, a := range aliases {
 		names = append(names, a.Name)
 	}
 	if len(names) == 0 {
@@ -90,7 +91,9 @@ func SerialLabel(store *Store, serial string) string {
 //
 // wantSerial, when non-empty, pre-asserts which key must be chosen; replugging
 // a different key is an error.
-func SelectDeviceForEnroll(ctx context.Context, r Runner, store *Store, ios cli.IOStreams, wantSerial string) (Device, error) {
+func SelectDeviceForEnroll(
+	ctx context.Context, r Runner, store *Store, ios cli.IOStreams, wantSerial string,
+) (Device, error) {
 	serials, err := ListSerials(ctx, r)
 	if err != nil {
 		return Device{}, err
@@ -111,7 +114,9 @@ func SelectDeviceForEnroll(ctx context.Context, r Runner, store *Store, ios cli.
 	}
 	paths := YubicoPaths(devices)
 	if len(paths) != len(serials) {
-		tui.Warnf(ios, "%d YubiKey serials but %d FIDO2 devices — an NFC-attached or serial-less key may be present", len(serials), len(paths))
+		tui.Warnf(ios,
+			"%d YubiKey serials but %d FIDO2 devices — an NFC-attached or serial-less key may be present",
+			len(serials), len(paths))
 	}
 
 	tracker := NewReplugTracker(serials, paths)
@@ -120,7 +125,7 @@ func SelectDeviceForEnroll(ctx context.Context, r Runner, store *Store, ios cli.
 	if wantSerial != "" {
 		title = fmt.Sprintf("Unplug and re-insert YubiKey %s", wantSerial)
 	}
-	err = tui.RunPoll(ios, title, "esc to choose from a list instead", replugInterval, replugTimeout, func() (bool, error) {
+	poll := func() (bool, error) {
 		curSerials, err := ListSerials(ctx, r)
 		if err != nil {
 			return false, err
@@ -138,11 +143,12 @@ func SelectDeviceForEnroll(ctx context.Context, r Runner, store *Store, ios cli.
 		}
 		picked = dev
 		return true, nil
-	})
-	switch {
-	case err == nil:
+	}
+	err = tui.RunPoll(ios, title, "esc to choose from a list instead", replugInterval, replugTimeout, poll)
+	switch err {
+	case nil:
 		return picked, nil
-	case err == tui.ErrAborted || err == tui.ErrTimeout || err == tui.ErrNotInteractive:
+	case tui.ErrAborted, tui.ErrTimeout, tui.ErrNotInteractive:
 		// Fall back to picking by serial; ssh-keygen's touch-select will
 		// choose the hardware, guided by an on-screen instruction.
 		serial := wantSerial

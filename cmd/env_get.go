@@ -39,9 +39,9 @@ names its own namespace). A trailing newline is printed unless --no-newline.`,
 			return err
 		}
 		if envGetFlags.NoNewline {
-			fmt.Fprint(ios.Out, value)
+			_, _ = fmt.Fprint(ios.Out, value)
 		} else {
-			fmt.Fprintln(ios.Out, value)
+			_, _ = fmt.Fprintln(ios.Out, value)
 		}
 		return nil
 	},

@@ -47,10 +47,10 @@ func EditTempFile(ctx context.Context, r interactiveRunner, initial string) (str
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
 	path := tmp.Name()
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 
 	if _, err := tmp.WriteString(initial); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return "", fmt.Errorf("seed %s: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {

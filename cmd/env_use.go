@@ -62,7 +62,7 @@ and an --out-file is written atomically so a failed run leaves no partial file.`
 			tui.Successf(ios, "Wrote %s", envUseFlags.OutFile)
 			return nil
 		}
-		fmt.Fprint(ios.Out, out)
+		_, _ = fmt.Fprint(ios.Out, out)
 		return nil
 	},
 }

@@ -45,7 +45,9 @@ func (k Kind) flag() string { return "--" + string(k) }
 // names of trustable kinds go through the `brew trust` flow first: when one
 // is untrusted, confirmTrust decides whether to trust it; declining aborts
 // before anything is written.
-func Add(ctx context.Context, r Runner, path string, kind Kind, names []string, confirmTrust func(name string) (bool, error)) error {
+func Add(ctx context.Context, r Runner, path string, kind Kind, names []string,
+	confirmTrust func(name string) (bool, error),
+) error {
 	for _, name := range names {
 		if !NeedsTrust(name) || !kind.Trustable() {
 			continue

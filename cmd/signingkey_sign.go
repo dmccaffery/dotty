@@ -99,7 +99,7 @@ func printGitConfig(ios cli.IOStreams) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(ios.Out, `# Sign git commits and tags with your YubiKey through dotty:
+	_, _ = fmt.Fprintf(ios.Out, `# Sign git commits and tags with your YubiKey through dotty:
 git config --global gpg.format ssh
 git config --global gpg.ssh.program %q
 git config --global gpg.ssh.defaultKeyCommand "%s signing-key get --format=key --username %s"

@@ -31,7 +31,7 @@ never printed — use get, use, or run to read them.`,
 			return nil
 		}
 		for _, k := range keys {
-			fmt.Fprintln(ios.Out, k)
+			_, _ = fmt.Fprintln(ios.Out, k)
 		}
 		return nil
 	},

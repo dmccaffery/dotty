@@ -41,5 +41,5 @@ func Warnf(ios cli.IOStreams, format string, a ...any) {
 }
 
 func notice(w io.Writer, style lipgloss.Style, glyph, format string, a ...any) {
-	fmt.Fprintf(w, "%s %s\n", style.Render(glyph), fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintf(w, "%s %s\n", style.Render(glyph), fmt.Sprintf(format, a...))
 }

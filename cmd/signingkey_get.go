@@ -70,7 +70,7 @@ preferring the ed25519 key when a user has several types enrolled.`,
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(ios.Out, signingkey.FormatGitKey(pub))
+			_, _ = fmt.Fprintln(ios.Out, signingkey.FormatGitKey(pub))
 			return nil
 		}
 
@@ -79,8 +79,8 @@ preferring the ed25519 key when a user has several types enrolled.`,
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(ios.Out, string(priv))
-			fmt.Fprint(ios.Out, string(pub))
+			_, _ = fmt.Fprint(ios.Out, string(priv))
+			_, _ = fmt.Fprint(ios.Out, string(pub))
 		}
 		return nil
 	},

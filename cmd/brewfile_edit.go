@@ -52,7 +52,8 @@ corresponding command runs after the editor exits.`,
 
 func init() {
 	brewfileEditCmd.Flags().BoolVar(&brewfileEditFlags.Sync, "sync", false, "run `dotty brewfile sync` after editing")
-	brewfileEditCmd.Flags().BoolVar(&brewfileEditFlags.Upgrade, "upgrade", false, "run `dotty brewfile upgrade` after editing")
+	brewfileEditCmd.Flags().BoolVar(&brewfileEditFlags.Upgrade, "upgrade", false,
+		"run `dotty brewfile upgrade` after editing")
 	brewfileEditCmd.MarkFlagsMutuallyExclusive("sync", "upgrade")
 	brewfileCmd.AddCommand(brewfileEditCmd)
 }

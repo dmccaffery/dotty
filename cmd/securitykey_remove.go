@@ -74,10 +74,7 @@ selections are removed in one go.`,
 			return nil
 		}
 
-		nodes, err := aliasTree(cmd, ios, bySerial)
-		if err != nil {
-			return err
-		}
+		nodes := aliasTree(cmd, ios, bySerial)
 		names, err := tui.TreeMultiSelect(ios, "Remove which aliases?", nodes)
 		if errors.Is(err, tui.ErrAborted) {
 			return nil
@@ -113,7 +110,7 @@ selections are removed in one go.`,
 // aliasTree builds the serial-grouped tree, badging serials that are
 // currently plugged in (best effort — enumeration failures just drop the
 // badge).
-func aliasTree(cmd *cobra.Command, ios cli.IOStreams, bySerial map[string][]securitykey.Alias) ([]tui.TreeNode, error) {
+func aliasTree(cmd *cobra.Command, ios cli.IOStreams, bySerial map[string][]securitykey.Alias) []tui.TreeNode {
 	plugged := map[string]bool{}
 	if serials, err := securitykey.ListSerials(cmd.Context(), newRunner(ios)); err == nil {
 		for _, s := range serials {
@@ -143,7 +140,7 @@ func aliasTree(cmd *cobra.Command, ios cli.IOStreams, bySerial map[string][]secu
 		}
 		nodes = append(nodes, node)
 	}
-	return nodes, nil
+	return nodes
 }
 
 func init() {

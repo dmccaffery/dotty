@@ -34,7 +34,7 @@ func Activate(ctx context.Context, r brewfile.Runner, configDir, name string) (s
 		return "", fmt.Errorf("create temp symlink: %w", err)
 	}
 	if err := os.Rename(tmp, filepath.Join(configDir, activeLink)); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return "", fmt.Errorf("swap active-profile symlink: %w", err)
 	}
 
