@@ -4,6 +4,7 @@
 package env
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -191,6 +192,208 @@ func TestCaptureIdempotent(t *testing.T) {
 	if len(secrets) != 0 {
 		t.Errorf("second Capture collected %v, want none", secrets)
 	}
+}
+
+// testResolve is the resolver the Parse tests inject references through. It
+// maps "<namespace>/<key>" to a value, defaulting an empty namespace (the bare
+// {{ KEY }} form) to "default", and reports ErrKeyNotFound for anything else.
+func testResolve(ns, key string) (string, error) {
+	if ns == "" {
+		ns = "default"
+	}
+	secrets := map[string]string{
+		"prod/API_KEY":  "live-key",
+		"prod/HOST":     "db.internal",
+		"prod/MULTI":    "a#b\nc",
+		"default/TOKEN": "tok",
+	}
+	if v, ok := secrets[ns+"/"+key]; ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("%q in namespace %q: %w", key, ns, ErrKeyNotFound)
+}
+
+func TestParse(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want []Entry
+	}{
+		{
+			name: "literal passthrough",
+			src:  "LOG_LEVEL=debug",
+			want: []Entry{{"LOG_LEVEL", "debug"}},
+		},
+		{
+			name: "fully-qualified reference resolved",
+			src:  "API_KEY={{ dotty://prod/API_KEY }}",
+			want: []Entry{{"API_KEY", "live-key"}},
+		},
+		{
+			name: "bare reference falls back to namespace",
+			src:  "TOKEN={{ TOKEN }}",
+			want: []Entry{{"TOKEN", "tok"}},
+		},
+		{
+			name: "reference embedded mid-value",
+			src:  "DSN=postgres://{{ dotty://prod/HOST }}/db",
+			want: []Entry{{"DSN", "postgres://db.internal/db"}},
+		},
+		{
+			name: "resolved secret keeps special characters",
+			src:  "MULTI={{ dotty://prod/MULTI }}",
+			want: []Entry{{"MULTI", "a#b\nc"}},
+		},
+		{
+			name: "mix of secrets and plain vars",
+			src:  "# a comment\n\nPORT=8080\nAPI_KEY={{ dotty://prod/API_KEY }}\n",
+			want: []Entry{{"PORT", "8080"}, {"API_KEY", "live-key"}},
+		},
+		{
+			name: "double quotes decoded",
+			src:  `MSG="line1\nline2"`,
+			want: []Entry{{"MSG", "line1\nline2"}},
+		},
+		{
+			name: "single quotes literal",
+			src:  `RAW='a\nb'`,
+			want: []Entry{{"RAW", `a\nb`}},
+		},
+		{
+			name: "inline comment stripped",
+			src:  "KEY=value # trailing note",
+			want: []Entry{{"KEY", "value"}},
+		},
+		{
+			name: "hash without leading space kept",
+			src:  "PASS=p#ss",
+			want: []Entry{{"PASS", "p#ss"}},
+		},
+		{
+			name: "export prefix and spacing",
+			src:  "export  AWS_KEY = secret",
+			want: []Entry{{"AWS_KEY", "secret"}},
+		},
+		{
+			name: "empty value is kept",
+			src:  "EMPTY=\nQUOTED_EMPTY=\"\"",
+			want: []Entry{{"EMPTY", ""}, {"QUOTED_EMPTY", ""}},
+		},
+		{
+			name: "non-assignment lines skipped",
+			src:  "not an assignment\n1BAD=x\nGOOD=ok",
+			want: []Entry{{"GOOD", "ok"}},
+		},
+		{
+			name: "crlf endings",
+			src:  "A=1\r\nB=2\r\n",
+			want: []Entry{{"A", "1"}, {"B", "2"}},
+		},
+		{
+			name: "duplicate keys keep file order",
+			src:  "DUP=first\nDUP=second",
+			want: []Entry{{"DUP", "first"}, {"DUP", "second"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Parse(tt.src, testResolve)
+			if err != nil {
+				t.Fatalf("Parse(%q): %v", tt.src, err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Parse(%q) =\n%#v\nwant\n%#v", tt.src, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		src     string
+		wantSub string
+	}{
+		{
+			name:    "unterminated quote",
+			src:     `OPEN="no close`,
+			wantSub: "unterminated quote",
+		},
+		{
+			name:    "unknown reference",
+			src:     "X={{ dotty://prod/MISSING }}",
+			wantSub: "key not found",
+		},
+		{
+			name:    "malformed reference",
+			src:     "X={{ dotty://prod }}",
+			wantSub: "malformed reference",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(tt.src, testResolve)
+			if err == nil {
+				t.Fatalf("Parse(%q) = nil error, want one containing %q", tt.src, tt.wantSub)
+			}
+			if !strings.Contains(err.Error(), tt.wantSub) {
+				t.Errorf("Parse(%q) error = %q, want substring %q", tt.src, err, tt.wantSub)
+			}
+		})
+	}
+}
+
+// TestCaptureParseRoundTrip checks that Parse loads what Capture externalized:
+// capturing a .env collects its secrets and rewrites values as references, and
+// parsing that output back — resolving through the collected secrets — yields
+// every assignment with its original value.
+func TestCaptureParseRoundTrip(t *testing.T) {
+	src := "export A=alpha\nPORT=8080\nB = two-words # note\n"
+	out, secrets, err := Capture(src, "ns")
+	if err != nil {
+		t.Fatalf("Capture: %v", err)
+	}
+	got, err := Parse(out, func(ns, key string) (string, error) {
+		if ns != "ns" {
+			t.Errorf("resolver got namespace %q, want ns", ns)
+		}
+		v, ok := secrets[key]
+		if !ok {
+			return "", fmt.Errorf("%q: %w", key, ErrKeyNotFound)
+		}
+		return v, nil
+	})
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	want := []Entry{{"A", "alpha"}, {"PORT", "8080"}, {"B", "two-words"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round trip = %#v, want %#v", got, want)
+	}
+}
+
+func FuzzParse(f *testing.F) {
+	for _, seed := range []string{
+		"K=v", "export K = v # c", `Q="a\nb"`, "K={{ dotty://ns/K }}",
+		"# comment", "", "K=", "1BAD=x", "A=1\r\nB=2", `OPEN="no close`,
+		"BARE={{ K }}", "MID=a{{ dotty://ns/K }}b",
+	} {
+		f.Add(seed)
+	}
+	resolve := func(ns, key string) (string, error) { return "x", nil }
+	f.Fuzz(func(t *testing.T, src string) {
+		entries, err := Parse(src, resolve) // must never panic
+		if err != nil {
+			return
+		}
+		// Every returned key is a valid environment variable name, so the pairs
+		// are safe to hand to os/exec.
+		for _, e := range entries {
+			if err := ValidateKey(e.Key); err != nil {
+				t.Errorf("Parse(%q) returned invalid key %q: %v", src, e.Key, err)
+			}
+		}
+	})
 }
 
 func FuzzCapture(f *testing.F) {

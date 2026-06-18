@@ -365,9 +365,13 @@ dotty env [--namespace=<ns>] use [--in-file=<file>] [--out-file=<file>]
 Command: run
 
 Launch a command with every credential in the namespace exported as an environment variable, like `op run`. dotty parses
-its own `--namespace` (and `--help`); everything after `--` is the command and its arguments, passed through untouched.
-The command inherits the terminal, and dotty exits with its exit code.
+its own `--namespace` and `--in-file` (and `--help`); everything after `--` is the command and its arguments, passed
+through untouched. The command inherits the terminal, and dotty exits with its exit code.
+
+With `--in-file`, the environment is built from a `.env` template instead of the whole namespace: every reference is
+resolved from the keychain and every plain `KEY=value` assignment is passed through — like `use`, but the secrets go
+straight to the process and are never written to disk.
 
 ```text
-dotty env [--namespace=<ns>] run -- <command> [args...]
+dotty env [--namespace=<ns>] run [--in-file=<file>] -- <command> [args...]
 ```

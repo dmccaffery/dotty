@@ -120,3 +120,42 @@ func TestEnvAddCaptureErrors(t *testing.T) {
 		t.Errorf("input file after refusal = %q (err %v), want %q", got, err, existingBody)
 	}
 }
+
+// TestEnvRunInFileErrors pins the `env run --in-file` paths that fail before any
+// keychain access or process exec: an unreadable file, and a file whose value
+// is malformed. Both surface an error rather than launching the command.
+func TestEnvRunInFileErrors(t *testing.T) {
+	dir := t.TempDir()
+	malformed := filepath.Join(dir, "bad.env")
+	if err := os.WriteFile(malformed, []byte("OPEN=\"no close\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantSub string
+	}{
+		{
+			name:    "unreadable in-file errors",
+			args:    []string{"env", "run", "--in-file", filepath.Join(dir, "nope.env"), "--", "true"},
+			wantSub: "read env file",
+		},
+		{
+			name:    "malformed value errors",
+			args:    []string{"env", "run", "--in-file", malformed, "--", "true"},
+			wantSub: "unterminated quote",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := execDotty(t, tt.args...)
+			if err == nil {
+				t.Fatalf("execute %v = nil, want error", tt.args)
+			}
+			if !strings.Contains(err.Error(), tt.wantSub) {
+				t.Errorf("execute %v error = %q, want substring %q", tt.args, err, tt.wantSub)
+			}
+		})
+	}
+}

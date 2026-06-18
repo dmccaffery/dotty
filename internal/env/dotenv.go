@@ -158,3 +158,50 @@ func looksLikeRef(v string) bool {
 	v = strings.TrimSpace(v)
 	return strings.HasPrefix(v, "{{") && strings.HasSuffix(v, "}}")
 }
+
+// Entry is one KEY=value assignment read from a .env document, with its value
+// fully resolved. Entries are returned in the order they appeared so a later
+// duplicate of a key wins, the way a shell sourcing the file would behave.
+type Entry struct {
+	Key   string
+	Value string
+}
+
+// Parse reads a .env document into the assignments a process should inherit,
+// the load-side counterpart to Capture. Each value is decoded with .env quoting
+// rules — double quotes unescape, single quotes are literal, and an unquoted
+// value runs to a whitespace-introduced "#" comment — and any {{ ... }}
+// reference it then contains is resolved through resolve, exactly as Inject
+// does for env use (a reference with an empty namespace falls back to the
+// resolver's default). Non-secret literals pass through untouched, while a
+// reference becomes its credential's exact value, special characters and all,
+// because resolution happens after the line is parsed rather than by re-reading
+// an injected document. Blank lines, comments, and lines that are not
+// assignments carry no variable and are skipped; an empty value is kept, since
+// "KEY=" deliberately sets KEY to the empty string. A malformed value (an
+// unterminated quote) and a reference that fails to resolve are hard errors, so
+// a needed variable is never silently dropped.
+func Parse(src string, resolve func(namespace, key string) (string, error)) ([]Entry, error) {
+	var entries []Entry
+	for _, raw := range strings.Split(src, "\n") {
+		line := strings.TrimSuffix(raw, "\r")
+		m := assignRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		key, region := m[2], m[3]
+		value, _, ok := splitValue(region)
+		if !ok {
+			return nil, fmt.Errorf("malformed value for %s: unterminated quote in %q", key, region)
+		}
+		if strings.Contains(value, "{{") {
+			resolved, err := Inject(value, resolve)
+			if err != nil {
+				return nil, err
+			}
+			value = resolved
+		}
+		entries = append(entries, Entry{Key: key, Value: value})
+	}
+	return entries, nil
+}
