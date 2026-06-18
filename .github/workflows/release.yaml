@@ -1,3 +1,6 @@
+# Copyright 2026 Bitwise Media Group Ltd.
+# SPDX-License-Identifier: MIT
+
 # Tag-driven release. Pushing a vX.Y.Z tag runs GoReleaser: binary archives +
 # checksums + SBOMs on the GitHub release. No container images — dotty drives
 # local hardware and Homebrew.

@@ -1,3 +1,6 @@
+# Copyright 2026 Bitwise Media Group Ltd.
+# SPDX-License-Identifier: MIT
+
 # Dependabot config. Daily checks with a 7-day cooldown; minor and patch bumps
 # are grouped into one PR per ecosystem. tools/go.mod gets its own gomod entry
 # so developer-tool bumps never ride along with application dependency PRs.

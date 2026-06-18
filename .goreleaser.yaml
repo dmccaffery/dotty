@@ -1,3 +1,6 @@
+# Copyright 2026 Bitwise Media Group Ltd.
+# SPDX-License-Identifier: MIT
+
 # GoReleaser config. Cut a release by pushing a vX.Y.Z tag (CI runs
 # `goreleaser release`); build locally without publishing via `make snapshot`.
 #
