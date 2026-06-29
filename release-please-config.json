@@ -3,6 +3,7 @@
     "release-type": "go",
     "include-component-in-tag": false,
     "initial-version": "0.1.0",
+    "always-update": true,
     "bump-minor-pre-major": true,
     "bump-patch-for-minor-pre-major": true,
     "draft": true,

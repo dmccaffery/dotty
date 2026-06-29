@@ -17,3 +17,4 @@ ignores:
     - "node_modules/**"
     - "dist/**"
     - ".claude/**"
+    - "CHANGELOG.md"
