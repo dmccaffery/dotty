@@ -1,0 +1,1065 @@
+/* ============================================================
+   dotty docs — yellow-on-warm-near-black theme for Zensical / Material
+   Sub-brand tokens: design-system/tokens/themes.css (.theme-dotty)
+   Single confident yellow (#F5C518) on warm near-black, JetBrains Mono,
+   sharp 4–6px corners, connected (shared-border) grids.
+   Dark  -> Material "slate" scheme
+   Light -> Material "default" scheme
+   ============================================================ */
+
+/* ---------- DARK (slate) ---------- */
+[data-md-color-scheme="slate"] {
+    --md-default-bg-color: #15140f;
+    --md-default-bg-color--light: #1f1d15;
+    --md-default-fg-color: #f4efdd;
+    --md-default-fg-color--light: #c8c0a4;
+    --md-default-fg-color--lighter: #8a8160;
+    --md-default-fg-color--lightest: rgba(244, 239, 221, 0.08);
+
+    --md-primary-fg-color: #15140f;
+    --md-primary-fg-color--light: #1f1d15;
+    --md-primary-fg-color--dark: #100f0b;
+    --md-primary-bg-color: #f4efdd;
+    --md-primary-bg-color--light: #c8c0a4;
+
+    --md-accent-fg-color: #f5c518;
+    --md-accent-fg-color--transparent: rgba(245, 197, 24, 0.1);
+    --md-typeset-a-color: #e6b400;
+
+    --md-code-bg-color: #100f0b;
+    --md-code-fg-color: #e7e0c6;
+    --md-code-hl-comment-color: #8a8160;
+    --md-code-hl-keyword-color: #f5c518;
+    --md-code-hl-string-color: #cbb968;
+    --md-code-hl-number-color: #e0a800;
+    --md-code-hl-function-color: #ffd740;
+    --md-code-hl-constant-color: #f0dc93;
+    --md-code-hl-name-color: #e7e0c6;
+    --md-code-hl-operator-color: #e0a800;
+    --md-code-hl-punctuation-color: #8a8160;
+
+    --md-footer-bg-color: #100f0b;
+    --md-footer-bg-color--dark: #0c0b08;
+
+    /* dotty brand ramp */
+    --dt-yellow: #f5c518;
+    --dt-yellow-2: #ffd740;
+    --dt-amber: #e0a800;
+    --dt-butter: #f0dc93;
+    --dt-bg: #15140f;
+    --dt-surface: #1f1d15;
+    --dt-code: #100f0b;
+    --dt-code-2: #0e0d09;
+    --dt-fg: #f4efdd;
+    --dt-muted: #a39a77;
+    --dt-grey: #6e6749;
+    --dt-line: #34301f;
+    --dt-line-2: #45402b;
+    --dt-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- LIGHT (default) ---------- */
+[data-md-color-scheme="default"] {
+    --md-default-bg-color: #fbfaf4;
+    --md-default-fg-color: #1b1a12;
+    --md-default-fg-color--light: #44402e;
+    --md-default-fg-color--lighter: #6e674c;
+    --md-default-fg-color--lightest: rgba(27, 26, 18, 0.1);
+
+    --md-primary-fg-color: #fbfaf4;
+    --md-primary-fg-color--light: #f3efe2;
+    --md-primary-fg-color--dark: #eee9d8;
+    --md-primary-bg-color: #1b1a12;
+    --md-primary-bg-color--light: #44402e;
+
+    --md-accent-fg-color: #8a6b00;
+    --md-accent-fg-color--transparent: rgba(138, 107, 0, 0.1);
+    --md-typeset-a-color: #8a6b00;
+
+    --md-code-bg-color: #f3efe2;
+    --md-code-fg-color: #1b1a12;
+    --md-code-hl-comment-color: #87805f;
+    --md-code-hl-keyword-color: #9a6a00;
+    --md-code-hl-string-color: #6f6100;
+    --md-code-hl-number-color: #a85a00;
+    --md-code-hl-function-color: #8a6b00;
+    --md-code-hl-constant-color: #74510a;
+    --md-code-hl-operator-color: #8a6b00;
+
+    --md-footer-bg-color: #15140f;
+    --md-footer-bg-color--dark: #100f0b;
+
+    --dt-yellow: #b8860b;
+    --dt-yellow-2: #9a6a00;
+    --dt-amber: #a85a00;
+    --dt-butter: #74510a;
+    --dt-bg: #fbfaf4;
+    --dt-surface: #f3efe2;
+    --dt-code: #f3efe2;
+    --dt-code-2: #efe9d8;
+    --dt-fg: #1b1a12;
+    --dt-muted: #6e674c;
+    --dt-grey: #87805f;
+    --dt-line: rgba(27, 26, 18, 0.12);
+    --dt-line-2: rgba(27, 26, 18, 0.2);
+    --dt-shadow: 0 24px 60px rgba(27, 26, 18, 0.16);
+}
+
+/* ===== Header: flat, with the dotty yellow underline ===== */
+.md-header {
+    box-shadow: none;
+    border-bottom: 1px solid var(--dt-line);
+    position: relative;
+}
+.md-header[data-md-state="shadow"],
+.md-header--shadow {
+    box-shadow: none;
+}
+.md-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        var(--dt-amber),
+        var(--dt-yellow) 45%,
+        var(--dt-yellow-2)
+    );
+}
+.md-header__title {
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+/* Header / drawer wordmark: "dotty()" with yellow parens (partials/*.html) */
+.dt-headmark {
+    font-family: var(
+        --md-code-font-family,
+        "JetBrains Mono",
+        ui-monospace,
+        monospace
+    );
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    color: var(--md-primary-bg-color, inherit);
+}
+.dt-headmark .dt-paren {
+    color: var(--dt-yellow);
+}
+.dt-headmark:hover {
+    opacity: 0.85;
+}
+[dir="ltr"] .md-search__input {
+    border-radius: 5px;
+}
+
+/* Active nav + links pick up the yellow accent */
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active {
+    color: var(--md-accent-fg-color);
+}
+.md-typeset .md-typeset__table {
+    border-color: var(--dt-line);
+}
+.md-typeset .admonition,
+.md-typeset details {
+    border-left-width: 2px;
+}
+
+/* ============================================================
+   LANDING PAGE  (.dt) — injected by overrides/home.html.
+   The landing is always the dark dotty canvas: it pins its own
+   brand tokens regardless of the active scheme (see the
+   body:has(.dt) block near the end for the surrounding chrome).
+   ============================================================ */
+.dt {
+    --dt-yellow: #f5c518;
+    --dt-yellow-2: #ffd740;
+    --dt-amber: #e0a800;
+    --dt-butter: #f0dc93;
+    --dt-bg: #15140f;
+    --dt-surface: #1f1d15;
+    --dt-code: #100f0b;
+    --dt-code-2: #0e0d09;
+    --dt-fg: #f4efdd;
+    --dt-muted: #a39a77;
+    --dt-grey: #6e6749;
+    --dt-line: #34301f;
+    --dt-line-2: #45402b;
+    --dt-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+    --dt-mono: var(
+        --md-code-font-family,
+        "JetBrains Mono",
+        ui-monospace,
+        monospace
+    );
+    --dt-sans: var(
+        --md-text-font-family,
+        "Hanken Grotesk",
+        system-ui,
+        sans-serif
+    );
+    --dt-r: 5px;
+
+    background: var(--dt-bg);
+    color: var(--dt-fg);
+    font-family: var(--dt-sans);
+    line-height: 1.55;
+}
+.dt * {
+    box-sizing: border-box;
+}
+.dt a {
+    text-decoration: none;
+}
+.dt-wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ---- HERO ---- */
+.dt-hero {
+    position: relative;
+    overflow: hidden;
+}
+.dt-hero__grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image:
+        linear-gradient(var(--dt-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--dt-line) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(
+        120% 80% at 50% 0%,
+        #000 30%,
+        transparent 72%
+    );
+    mask-image: radial-gradient(120% 80% at 50% 0%, #000 30%, transparent 72%);
+}
+.dt-hero__glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(
+            820px 380px at 78% -8%,
+            rgba(245, 197, 24, 0.14),
+            transparent
+        ),
+        radial-gradient(
+            620px 360px at 8% 6%,
+            rgba(224, 168, 0, 0.08),
+            transparent
+        );
+}
+.dt-hero__inner {
+    position: relative;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 70px 24px 48px;
+    text-align: center;
+}
+.dt-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 22px;
+    font-family: var(--dt-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dt-yellow);
+    border: 1px solid color-mix(in oklab, #f5c518 40%, transparent);
+    background: color-mix(in oklab, #f5c518 9%, transparent);
+    padding: 5px 12px;
+    border-radius: 999px;
+}
+.dt-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dt-yellow);
+    animation: dt-pulse 1.6s ease-in-out infinite;
+}
+.dt-wordmark-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.dt-wordmark {
+    margin: 0;
+    font-family: var(--dt-mono);
+    font-weight: 700;
+    font-size: clamp(54px, 10.5vw, 112px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--dt-fg);
+}
+.dt-paren {
+    color: var(--dt-yellow);
+}
+/* "alpha · early preview" — plain-text superscript next to the hero wordmark */
+.dt-alpha {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-top: 0.7rem;
+    font-family: var(--dt-mono);
+    line-height: 1;
+    white-space: nowrap;
+}
+.dt-alpha b {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dt-yellow);
+}
+.dt-alpha i {
+    font-size: 9px;
+    font-style: normal;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dt-muted);
+}
+.dt-tagline {
+    margin: 20px auto 0;
+    max-width: 680px;
+    font-size: clamp(19px, 2.6vw, 24px);
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--dt-fg);
+}
+.dt-tagline em {
+    font-style: normal;
+    color: var(--dt-yellow);
+}
+.dt-lede {
+    margin: 16px auto 0;
+    max-width: 660px;
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--dt-muted);
+    text-wrap: pretty;
+}
+
+/* install terminal block */
+.dt-term {
+    max-width: 520px;
+    margin: 28px auto 0;
+    text-align: left;
+    overflow: hidden;
+    background: var(--dt-surface);
+    border: 1px solid var(--dt-line);
+    border-radius: var(--dt-r);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+.dt-term__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--dt-line);
+}
+.dt-dots {
+    display: flex;
+    gap: 6px;
+}
+.dt-dots i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.dt-dots i:nth-child(1) {
+    background: var(--dt-amber);
+}
+.dt-dots i:nth-child(2) {
+    background: var(--dt-yellow);
+}
+.dt-dots i:nth-child(3) {
+    background: var(--dt-yellow-2);
+}
+.dt-term__bar span {
+    margin-left: 6px;
+    font-family: var(--dt-mono);
+    font-size: 11px;
+    color: var(--dt-muted);
+}
+.dt-term__bar span.dt-spacer {
+    margin-left: auto;
+    color: var(--dt-yellow);
+}
+
+/* a copyable command row ($ cmd  + copy button) */
+.dt-copy {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--dt-code);
+    border-top: 1px solid var(--dt-line);
+}
+.dt-copy .dt-p {
+    color: var(--dt-yellow);
+    font-family: var(--dt-mono);
+    font-size: 13.5px;
+}
+.dt-copy code {
+    flex: 1;
+    font-family: var(--dt-mono);
+    font-size: 13.5px;
+    color: var(--dt-fg);
+    background: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* buttons */
+.dt-cta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+.dt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--dt-mono);
+    font-size: 14px;
+    padding: 12px 20px;
+    border-radius: var(--dt-r);
+    border: 1px solid transparent;
+}
+.dt-btn--primary {
+    background: var(--dt-yellow);
+    color: #15140f;
+    font-weight: 700;
+}
+.dt-btn--primary:hover {
+    background: var(--dt-yellow-2);
+}
+.dt-btn--ghost {
+    background: var(--dt-surface);
+    color: var(--dt-fg);
+    border-color: var(--dt-line);
+    font-weight: 600;
+}
+.dt-btn--ghost:hover {
+    border-color: var(--dt-line-2);
+}
+.dt-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ---- TERMINAL SHOWCASE ---- */
+.dt-shot {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 8px 24px 4px;
+}
+.dt-shot__frame {
+    background: var(--dt-code-2);
+    border: 1px solid var(--dt-line);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: var(--dt-shadow);
+}
+.dt-shot__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--dt-line);
+    font-family: var(--dt-mono);
+}
+.dt-shot__bar .dt-dots i {
+    width: 11px;
+    height: 11px;
+}
+.dt-shot__bar .dt-title {
+    margin-left: 6px;
+    font-size: 11.5px;
+    color: var(--dt-muted);
+}
+.dt-shot__bar .dt-live {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--dt-yellow);
+}
+.dt-panes {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+}
+.dt-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.dt-pane + .dt-pane {
+    border-left: 1px solid var(--dt-line);
+}
+.dt-pane__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border-bottom: 1px solid var(--dt-line);
+    background: var(--dt-code);
+}
+.dt-pane__head b {
+    font-family: var(--dt-mono);
+    font-size: 10px;
+    color: #15140f;
+    background: var(--dt-yellow);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-weight: 700;
+}
+.dt-pane__head span {
+    font-family: var(--dt-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dt-muted);
+}
+.dt-pane__body {
+    padding: 10px 12px;
+    font-family: var(--dt-mono);
+    font-size: 11.5px;
+    line-height: 1.9;
+    overflow: hidden;
+}
+.dt-prow {
+    display: flex;
+    gap: 8px;
+    padding: 0 4px;
+    border-radius: 3px;
+}
+.dt-prow--active {
+    background: rgba(245, 197, 24, 0.1);
+}
+.dt-prow .car {
+    width: 8px;
+    color: var(--dt-muted);
+}
+.dt-prow--active .car {
+    color: var(--dt-yellow);
+}
+.dt-prow .nm {
+    width: 64px;
+    color: var(--dt-muted);
+}
+.dt-prow--active .nm {
+    color: var(--dt-fg);
+}
+.dt-prow .pa {
+    flex: 1;
+    color: var(--dt-grey);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dt-prow .st {
+    color: var(--dt-yellow);
+}
+.dt-blink {
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    background: var(--dt-yellow);
+    vertical-align: middle;
+    margin-left: 1px;
+    animation: dt-blink 1s steps(1) infinite;
+}
+.dt-ok {
+    color: var(--dt-yellow);
+}
+.dt-dim {
+    color: var(--dt-muted);
+}
+.dt-arow {
+    display: flex;
+    gap: 9px;
+    align-items: baseline;
+}
+.dt-arow .gl {
+    width: 8px;
+}
+.dt-arow .k {
+    color: var(--dt-fg);
+    width: 92px;
+}
+.dt-arow .v {
+    color: var(--dt-muted);
+    flex: 1;
+}
+.dt-pane__sep {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--dt-line);
+    color: var(--dt-muted);
+}
+.dt-shot__cap {
+    text-align: center;
+    font-size: 13px;
+    color: var(--dt-muted);
+    margin: 14px 2px 0;
+}
+.dt-shot__cap b {
+    color: var(--dt-fg);
+    font-weight: 600;
+}
+
+/* ---- MARQUEE ---- */
+.dt-marquee {
+    overflow: hidden;
+    border-top: 1px solid var(--dt-line);
+    border-bottom: 1px solid var(--dt-line);
+    padding: 13px 0;
+    margin-top: 40px;
+    -webkit-mask-image: linear-gradient(
+        90deg,
+        transparent,
+        #000 8%,
+        #000 92%,
+        transparent
+    );
+    mask-image: linear-gradient(
+        90deg,
+        transparent,
+        #000 8%,
+        #000 92%,
+        transparent
+    );
+}
+.dt-marquee__track {
+    display: flex;
+    width: max-content;
+    animation: dt-marquee 34s linear infinite;
+}
+.dt-marquee__track span {
+    font-family: var(--dt-mono);
+    font-size: 12.5px;
+    color: var(--dt-muted);
+    padding: 0 22px;
+    border-right: 1px solid var(--dt-line);
+    white-space: nowrap;
+}
+
+/* ---- STATS ---- */
+.dt-stats-wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+.dt-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--dt-line);
+    border-top: none;
+    overflow: hidden;
+}
+.dt-stat {
+    padding: 22px 18px;
+    background: var(--dt-surface);
+}
+.dt-stat + .dt-stat {
+    border-left: 1px solid var(--dt-line);
+}
+.dt-stat b {
+    display: block;
+    font-family: var(--dt-mono);
+    font-weight: 700;
+    font-size: clamp(22px, 3vw, 30px);
+    color: var(--dt-fg);
+}
+.dt-stat small {
+    display: block;
+    font-family: var(--dt-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dt-muted);
+    margin-top: 4px;
+}
+
+/* ---- SECTIONS ---- */
+.dt-section {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 64px 24px 0;
+}
+.dt-section--last {
+    padding-bottom: 72px;
+}
+.dt-eyebrow {
+    margin: 0;
+    font-family: var(--dt-mono);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--dt-muted);
+    font-weight: 500;
+}
+.dt-lead {
+    margin: 10px 0 26px;
+    font-family: var(--dt-sans);
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--dt-fg);
+    max-width: 760px;
+}
+.dt-lead code,
+.dt-lead--sm code {
+    font-family: var(--dt-mono);
+    color: var(--dt-yellow);
+    font-size: 0.85em;
+    background: none;
+}
+.dt-lead--sm {
+    margin: 10px 0 24px;
+    font-family: var(--dt-sans);
+    font-size: clamp(20px, 2.6vw, 26px);
+    font-weight: 600;
+    color: var(--dt-fg);
+}
+
+/* connected feature grid */
+.dt-conn {
+    border: 1px solid var(--dt-line);
+    overflow: hidden;
+}
+.dt-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+.dt-grid-3 > * {
+    border-left: 1px solid var(--dt-line);
+    border-top: 1px solid var(--dt-line);
+}
+.dt-grid-3 > :nth-child(3n + 1) {
+    border-left: none;
+}
+.dt-grid-3 > :nth-child(-n + 3) {
+    border-top: none;
+}
+.dt-feat {
+    padding: 22px;
+    background: var(--dt-surface);
+}
+.dt-glyph {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--dt-r);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    color: #15140f;
+}
+.dt-glyph svg {
+    width: 19px;
+    height: 19px;
+}
+.dt-feat h3 {
+    margin: 0 0 7px;
+    font-family: var(--dt-mono);
+    font-size: 15.5px;
+    color: var(--dt-fg);
+}
+.dt-feat p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--dt-muted);
+    text-wrap: pretty;
+}
+.dt-feat p code {
+    font-family: var(--dt-mono);
+    color: var(--dt-fg);
+    background: none;
+    padding: 0;
+}
+
+/* nouns / drives panels */
+.dt-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+}
+.dt-panel {
+    padding: 20px;
+    background: var(--dt-surface);
+    border: 1px solid var(--dt-line);
+}
+.dt-panel h3 {
+    margin: 0 0 12px;
+    font-family: var(--dt-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dt-muted);
+}
+.dt-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.dt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--dt-mono);
+    font-size: 12.5px;
+    color: var(--dt-fg);
+    background: var(--dt-bg);
+    border: 1px solid var(--dt-line);
+    border-radius: 3px;
+    padding: 5px 10px;
+}
+.dt-chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--chip, var(--dt-yellow));
+}
+
+/* ---- GRAMMAR (command list) ---- */
+.dt-cmdcard {
+    background: var(--dt-code-2);
+    border: 1px solid var(--dt-line);
+    border-radius: 6px;
+    overflow: hidden;
+    max-width: 760px;
+}
+.dt-cmdcard__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--dt-line);
+}
+.dt-cmdcard__bar svg {
+    width: 14px;
+    height: 14px;
+    color: var(--dt-yellow);
+}
+.dt-cmdcard__bar span {
+    font-family: var(--dt-mono);
+    font-size: 11.5px;
+    color: var(--dt-muted);
+}
+.dt-cmdcard__list {
+    padding: 8px 0;
+}
+.dt-cmdrow {
+    display: flex;
+    gap: 16px;
+    padding: 6px 16px;
+    flex-wrap: wrap;
+}
+.dt-cmdrow + .dt-cmdrow {
+    border-top: 1px solid rgba(52, 48, 31, 0.5);
+}
+.dt-cmdrow code {
+    font-family: var(--dt-mono);
+    font-size: 13px;
+    color: var(--dt-fg);
+    background: none;
+    min-width: 320px;
+}
+.dt-cmdrow code .p {
+    color: var(--dt-yellow);
+}
+.dt-cmdrow .cmt {
+    font-family: var(--dt-mono);
+    font-size: 12px;
+    color: var(--dt-muted);
+    flex: 1;
+}
+
+/* ---- STEPS ---- */
+.dt-steps {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+.dt-step {
+    background: var(--dt-surface);
+    display: flex;
+    flex-direction: column;
+}
+.dt-step + .dt-step {
+    border-left: 1px solid var(--dt-line);
+}
+.dt-step__body {
+    padding: 22px 22px 16px;
+    flex: 1;
+}
+.dt-step__num {
+    font-family: var(--dt-mono);
+    font-size: 13px;
+    color: var(--dt-yellow);
+    margin-bottom: 12px;
+}
+.dt-step h3 {
+    margin: 0 0 7px;
+    font-family: var(--dt-mono);
+    font-size: 17px;
+    color: var(--dt-fg);
+}
+.dt-step p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--dt-muted);
+}
+.dt-cmd {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 16px;
+    border-top: 1px solid var(--dt-line);
+    background: var(--dt-code);
+}
+.dt-cmd .dt-p {
+    color: var(--dt-yellow);
+    font-family: var(--dt-mono);
+    font-size: 12.5px;
+}
+.dt-cmd code {
+    flex: 1;
+    font-family: var(--dt-mono);
+    font-size: 12px;
+    color: var(--dt-fg);
+    background: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 28px;
+}
+
+/* Copy buttons reuse zensical's .md-code__nav / .md-code__button styling; the
+   row just provides the positioning context. The wiring is the inline script in
+   overrides/home.html (scoped to [data-dt-copy] so it never touches zensical's
+   own code-block copy buttons). */
+.dt-copy .md-code__nav,
+.dt-cmd .md-code__nav {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+}
+
+/* ---- keyframes ---- */
+@keyframes dt-blink {
+    50% {
+        opacity: 0;
+    }
+}
+@keyframes dt-marquee {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}
+@keyframes dt-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dt-marquee__track,
+    .dt-dot,
+    .dt-blink {
+        animation: none !important;
+    }
+}
+
+/* ---- responsive ---- */
+@media (max-width: 860px) {
+    .dt-grid-3 {
+        grid-template-columns: 1fr;
+    }
+    .dt-grid-3 > * {
+        border-left: none;
+        border-top: 1px solid var(--dt-line);
+    }
+    .dt-grid-3 > :first-child {
+        border-top: none;
+    }
+    .dt-steps {
+        grid-template-columns: 1fr;
+    }
+    .dt-step + .dt-step {
+        border-left: none;
+        border-top: 1px solid var(--dt-line);
+    }
+}
+@media (max-width: 720px) {
+    .dt-panes {
+        grid-template-columns: 1fr;
+    }
+    .dt-pane + .dt-pane {
+        border-left: none;
+        border-top: 1px solid var(--dt-line);
+    }
+    .dt-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .dt-stat:nth-child(3) {
+        border-left: none;
+    }
+    .dt-stat:nth-child(n + 3) {
+        border-top: 1px solid var(--dt-line);
+    }
+    .dt-two {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   HOME PAGE chrome — keep the whole page on the dark dotty canvas
+   regardless of the active light/dark scheme, and drop the empty
+   article that home.html leaves behind (the landing lives in the
+   `tabs` block above it).
+   ============================================================ */
+body:has(.dt) {
+    --md-default-bg-color: #15140f;
+    --md-default-fg-color: #f4efdd;
+    --md-primary-fg-color: #15140f;
+    --md-primary-bg-color: #f4efdd;
+    --md-footer-bg-color: #100f0b;
+    --md-footer-bg-color--dark: #0c0b08;
+    --md-typeset-a-color: #e6b400;
+}
+body:has(.dt) .md-content {
+    display: none;
+}
+body:has(.dt) .md-main__inner {
+    margin-top: 0;
+}
