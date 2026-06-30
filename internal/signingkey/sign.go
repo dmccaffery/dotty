@@ -94,11 +94,19 @@ func RewriteSignArgs(
 	return append(prefix, args...), nil
 }
 
-// Sign execs ssh-keygen with the rewritten argv and inherited stdio. A
-// non-zero exit surfaces as *cli.ExitError so main can mirror the code —
-// git checks it.
-func Sign(ctx context.Context, r interactiveRunner, args []string) error {
-	return r.RunInteractive(ctx, "ssh-keygen", args...)
+// signRunner runs ssh-keygen for signing with an explicit child environment, so
+// the sign path can drop the agent socket and point SSH_ASKPASS at dotty's own
+// pinentry bridge. env replaces the child environment outright rather than
+// extending it — removing a variable means leaving it out.
+type signRunner interface {
+	RunInteractiveEnvReplace(ctx context.Context, env []string, name string, args ...string) error
+}
+
+// Sign execs ssh-keygen with the rewritten argv, inherited stdio, and the
+// signing environment env (see SignEnv). A non-zero exit surfaces as
+// *cli.ExitError so main can mirror the code — git checks it.
+func Sign(ctx context.Context, r signRunner, env []string, args []string) error {
+	return r.RunInteractiveEnvReplace(ctx, env, "ssh-keygen", args...)
 }
 
 func isSKPublicKey(line string) bool {

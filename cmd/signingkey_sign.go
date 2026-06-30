@@ -84,7 +84,19 @@ the namespace to "file".`,
 		if err != nil {
 			return err
 		}
-		return signingkey.Sign(cmd.Context(), newRunner(ios), finalArgs)
+
+		// Drive PIN prompts through dotty's own ask-pass bridge so pinentry-mac
+		// can cache the PIN in the macOS keychain. askpass is dotty's own binary,
+		// re-entered as `signing-key ask-pass` via the DOTTY_ASKPASS sentinel; if
+		// it can't be resolved, signing still works through the inherited
+		// SSH_ASKPASS, only without keychain caching.
+		askpass, err := os.Executable()
+		if err != nil {
+			askpass = ""
+		}
+		keyinfo := signingkey.KeyInfoForArgs(finalArgs, os.ReadFile)
+		env := signingkey.SignEnv(os.Environ(), askpass, keyinfo)
+		return signingkey.Sign(cmd.Context(), newRunner(ios), env, finalArgs)
 	},
 }
 

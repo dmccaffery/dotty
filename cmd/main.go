@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bitwise-media-group/dotty/internal/cli"
+	"github.com/bitwise-media-group/dotty/internal/signingkey"
 	"github.com/bitwise-media-group/dotty/internal/version"
 )
 
@@ -68,7 +69,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	rootCmd.SetArgs(dispatchArgs(os.Args))
+	rootCmd.SetArgs(dispatchArgs(os.Args, os.Getenv))
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "dotty: %v\n", err)
 		var exitErr *cli.ExitError
@@ -79,13 +80,18 @@ func main() {
 	}
 }
 
-// dispatchArgs rewrites the argv for git's SSH-signing entry points, which
-// exec a single program with no shell and so cannot name a subcommand:
-// gpg.ssh.program may point at the dotty binary itself (git always passes
-// -Y first) or at a dotty-ssh-sign symlink.
-func dispatchArgs(argv []string) []string {
+// dispatchArgs rewrites the argv for the SSH entry points that exec a single
+// program with no shell and so cannot name a subcommand. When dotty is invoked
+// as $SSH_ASKPASS it carries DOTTY_ASKPASS=1 (a PIN prompt argument can't
+// otherwise be told from a mistyped command), routing to `signing-key ask-pass`.
+// Otherwise gpg.ssh.program is either the dotty binary (git always passes -Y
+// first) or a dotty-ssh-sign symlink, routing to `signing-key sign`.
+func dispatchArgs(argv []string, getenv func(string) string) []string {
 	rest := argv[1:]
-	if filepath.Base(argv[0]) == "dotty-ssh-sign" || (len(rest) > 0 && rest[0] == "-Y") {
+	switch {
+	case getenv(signingkey.AskPassEnv) == "1":
+		return append([]string{"signing-key", "ask-pass"}, rest...)
+	case filepath.Base(argv[0]) == "dotty-ssh-sign" || (len(rest) > 0 && rest[0] == "-Y"):
 		return append([]string{"signing-key", "sign"}, rest...)
 	}
 	return rest

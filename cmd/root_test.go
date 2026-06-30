@@ -56,38 +56,65 @@ func TestFlagBeforeVerb(t *testing.T) {
 	}
 }
 
-// TestDispatchArgs pins the git-signing argv rewrite: gpg.ssh.program may be
-// the dotty binary itself (git passes -Y first) or a dotty-ssh-sign symlink.
+// TestDispatchArgs pins the SSH-entry argv rewrites: gpg.ssh.program may be the
+// dotty binary itself (git passes -Y first) or a dotty-ssh-sign symlink, and an
+// $SSH_ASKPASS invocation is recognized by the DOTTY_ASKPASS sentinel.
 func TestDispatchArgs(t *testing.T) {
+	noEnv := func(string) string { return "" }
+	askPassEnv := func(k string) string {
+		if k == "DOTTY_ASKPASS" {
+			return "1"
+		}
+		return ""
+	}
 	tests := []struct {
-		name string
-		argv []string
-		want []string
+		name   string
+		argv   []string
+		getenv func(string) string
+		want   []string
 	}{
 		{
-			name: "plain invocation untouched",
-			argv: []string{"/usr/local/bin/dotty", "profile", "new"},
-			want: []string{"profile", "new"},
+			name:   "plain invocation untouched",
+			argv:   []string{"/usr/local/bin/dotty", "profile", "new"},
+			getenv: noEnv,
+			want:   []string{"profile", "new"},
 		},
 		{
-			name: "git -Y invocation rewritten",
-			argv: []string{"/usr/local/bin/dotty", "-Y", "sign", "-n", "git", "-f", "/k", "/buf"},
-			want: []string{"signing-key", "sign", "-Y", "sign", "-n", "git", "-f", "/k", "/buf"},
+			name:   "git -Y invocation rewritten",
+			argv:   []string{"/usr/local/bin/dotty", "-Y", "sign", "-n", "git", "-f", "/k", "/buf"},
+			getenv: noEnv,
+			want:   []string{"signing-key", "sign", "-Y", "sign", "-n", "git", "-f", "/k", "/buf"},
 		},
 		{
-			name: "shim symlink rewritten",
-			argv: []string{"/Users/x/.local/bin/dotty-ssh-sign", "-Y", "sign", "-f", "/k", "/buf"},
-			want: []string{"signing-key", "sign", "-Y", "sign", "-f", "/k", "/buf"},
+			name:   "shim symlink rewritten",
+			argv:   []string{"/Users/x/.local/bin/dotty-ssh-sign", "-Y", "sign", "-f", "/k", "/buf"},
+			getenv: noEnv,
+			want:   []string{"signing-key", "sign", "-Y", "sign", "-f", "/k", "/buf"},
 		},
 		{
-			name: "bare invocation untouched",
-			argv: []string{"dotty"},
-			want: []string{},
+			name:   "askpass invocation rewritten by sentinel",
+			argv:   []string{"/usr/local/bin/dotty", "Enter PIN for ED25519-SK key: "},
+			getenv: askPassEnv,
+			want:   []string{"signing-key", "ask-pass", "Enter PIN for ED25519-SK key: "},
+		},
+		{
+			name: "askpass sentinel wins over a prompt that looks like a shim",
+			argv: []string{"/Users/x/.local/bin/dotty-ssh-sign", "-Y is not a sign request here"},
+			// A PIN prompt reaching the dotty-ssh-sign path must still go to
+			// ask-pass, not be mistaken for a sign invocation.
+			getenv: askPassEnv,
+			want:   []string{"signing-key", "ask-pass", "-Y is not a sign request here"},
+		},
+		{
+			name:   "bare invocation untouched",
+			argv:   []string{"dotty"},
+			getenv: noEnv,
+			want:   []string{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := dispatchArgs(tt.argv); !slices.Equal(got, tt.want) {
+			if got := dispatchArgs(tt.argv, tt.getenv); !slices.Equal(got, tt.want) {
 				t.Errorf("dispatchArgs(%v) = %v, want %v", tt.argv, got, tt.want)
 			}
 		})
