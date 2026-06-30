@@ -66,7 +66,7 @@ func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) error
 // terminal — required for editors, brew prompts, and ssh-keygen PIN entry.
 // A non-zero exit comes back as an *ExitError carrying the child's code.
 func (r *ExecRunner) RunInteractive(ctx context.Context, name string, args ...string) error {
-	return r.RunInteractiveEnv(ctx, nil, name, args...)
+	return r.runInteractive(ctx, "", nil, name, args...)
 }
 
 // RunInteractiveEnv is RunInteractive with extraEnv appended to the current
@@ -75,8 +75,23 @@ func (r *ExecRunner) RunInteractive(ctx context.Context, name string, args ...st
 // environment. A nil extraEnv leaves the child inheriting dotty's environment
 // unchanged.
 func (r *ExecRunner) RunInteractiveEnv(ctx context.Context, extraEnv []string, name string, args ...string) error {
+	return r.runInteractive(ctx, "", extraEnv, name, args...)
+}
+
+// RunInteractiveDir is RunInteractive with the child's working directory set to
+// dir. ssh-keygen -K writes the resident keys it downloads to the current
+// directory, so `signing-key import` runs it in a throwaway dir; an empty dir
+// leaves the child in dotty's own working directory, as the other variants do.
+func (r *ExecRunner) RunInteractiveDir(ctx context.Context, dir, name string, args ...string) error {
+	return r.runInteractive(ctx, dir, nil, name, args...)
+}
+
+func (r *ExecRunner) runInteractive(
+	ctx context.Context, dir string, extraEnv []string, name string, args ...string,
+) error {
 	r.log.LogAttrs(ctx, slog.LevelDebug, "exec interactive", slog.String("cmd", name), slog.Any("args", args))
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
 	cmd.Stdin = r.ios.In
 	cmd.Stdout = r.ios.Out
 	cmd.Stderr = r.ios.ErrOut

@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -80,6 +82,20 @@ func TestExecRunnerRunInteractive(t *testing.T) {
 			t.Errorf("Out = %q", out.String())
 		}
 	})
+}
+
+func TestExecRunnerRunInteractiveDir(t *testing.T) {
+	r, _, _ := newTestRunner()
+	dir := t.TempDir()
+	// Create a marker in the child's working directory; asserting the file
+	// lands in dir sidesteps macOS /var -> /private/var symlink noise that a
+	// `pwd` comparison would trip over.
+	if err := r.RunInteractiveDir(context.Background(), dir, "sh", "-c", "touch marker"); err != nil {
+		t.Fatalf("RunInteractiveDir() error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "marker")); err != nil {
+		t.Errorf("marker not created in %s: %v", dir, err)
+	}
 }
 
 func TestExecRunnerLookPath(t *testing.T) {
