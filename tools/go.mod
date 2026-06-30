@@ -26,7 +26,7 @@ require (
 	cloud.google.com/go/kms v1.31.0 // indirect
 	cloud.google.com/go/longrunning v0.9.0 // indirect
 	cloud.google.com/go/monitoring v1.24.3 // indirect
-	cloud.google.com/go/storage v1.61.3 // indirect
+	cloud.google.com/go/storage v1.62.0 // indirect
 	code.gitea.io/sdk/gitea v0.25.1 // indirect
 	codeberg.org/chavacava/garif v0.2.0 // indirect
 	codeberg.org/polyfloyd/go-errorlint v1.9.0 // indirect
@@ -322,7 +322,7 @@ require (
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/ko v0.18.2-0.20260407063826-ae9c7272d7de // indirect
 	github.com/google/licensecheck v0.3.1 // indirect
-	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
+	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
 	github.com/google/rpmpack v0.7.1 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -510,14 +510,14 @@ require (
 	github.com/sassoftware/go-rpmutils v0.4.0 // indirect
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
 	github.com/scylladb/go-set v1.0.3-0.20200225121959-cc7b2070d91e // indirect
-	github.com/secure-systems-lab/go-securesystemslib v0.10.0 // indirect
+	github.com/secure-systems-lab/go-securesystemslib v0.11.0 // indirect
 	github.com/securego/gosec/v2 v2.26.1 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sigstore/cosign/v3 v3.0.6 // indirect
-	github.com/sigstore/protobuf-specs v0.5.0 // indirect
-	github.com/sigstore/rekor v1.5.1 // indirect
+	github.com/sigstore/protobuf-specs v0.5.1 // indirect
+	github.com/sigstore/rekor v1.5.2 // indirect
 	github.com/sigstore/rekor-tiles/v2 v2.2.1 // indirect
 	github.com/sigstore/sigstore v1.10.6 // indirect
 	github.com/sigstore/sigstore-go v1.1.4 // indirect
