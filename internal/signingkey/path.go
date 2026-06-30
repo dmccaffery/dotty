@@ -138,7 +138,7 @@ func Read(ref KeyRef) (priv, pub []byte, err error) {
 // signer a temp file holding just the public key; this maps it back to the
 // stub that can actually sign.
 func MatchByPublicKey(refs []KeyRef, line string) (KeyRef, bool) {
-	want := firstTwoFields(line)
+	want := PubKeyID(line)
 	if want == "" {
 		return KeyRef{}, false
 	}
@@ -147,14 +147,18 @@ func MatchByPublicKey(refs []KeyRef, line string) (KeyRef, bool) {
 		if err != nil {
 			continue
 		}
-		if firstTwoFields(string(pub)) == want {
+		if PubKeyID(string(pub)) == want {
 			return ref, true
 		}
 	}
 	return KeyRef{}, false
 }
 
-func firstTwoFields(s string) string {
+// PubKeyID reduces a public-key line to its identity — the algorithm and key
+// blob (the first two fields), dropping the free-form comment. Two stubs share
+// an identity exactly when they name the same credential, so this is what both
+// git's literal-pubkey match and import's hardware match compare on.
+func PubKeyID(s string) string {
 	fields := strings.Fields(s)
 	if len(fields) < 2 {
 		return ""
