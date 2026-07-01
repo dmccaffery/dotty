@@ -79,9 +79,11 @@ func Add(ctx context.Context, r Runner, path string, kind Kind, names []string,
 }
 
 // Upgrade installs and upgrades everything in the Brewfile without removing
-// anything.
+// anything. brew bundle install does not clean up unless asked, so no flag is
+// needed to preserve unlisted brews (and the former --no-cleanup flag has been
+// removed from Homebrew).
 func Upgrade(ctx context.Context, r Runner, path string) error {
-	return r.Run(ctx, "brew", "bundle", "install", "--file="+path, "--upgrade", "--no-cleanup")
+	return r.Run(ctx, "brew", "bundle", "install", "--file="+path, "--upgrade")
 }
 
 // Sync makes the machine match the Brewfile exactly, removing brews that are

@@ -263,7 +263,7 @@ dotty [--profile=<profile>] brewfile add [--tap | --cask | --formula] <name> [..
 Upgrade all brews in the brewfile. This is akin to running:
 
 ```sh
-brew bundle install --file=${XDG_CONFIG_HOME}/dotty/profile/Brewfile --upgrade --no-cleanup`
+brew bundle install --file=${XDG_CONFIG_HOME}/dotty/profile/Brewfile --upgrade
 ```
 
 ```text

@@ -5,7 +5,7 @@ Upgrade everything in the Brewfile.
 ### Synopsis
 
 Install and upgrade all brews in the Brewfile without removing anything —
-brew bundle install --upgrade --no-cleanup.
+brew bundle install --upgrade.
 
 ```
 dotty brewfile upgrade [flags]
