@@ -15,7 +15,7 @@ var brewfileUpgradeCmd = &cobra.Command{
 	Use:   "upgrade",
 	Short: "Upgrade everything in the Brewfile.",
 	Long: `Install and upgrade all brews in the Brewfile without removing anything —
-brew bundle install --upgrade --no-cleanup.`,
+brew bundle install --upgrade.`,
 	Example: `  dotty brewfile upgrade
   dotty --profile=work brewfile upgrade`,
 	Args: cobra.NoArgs,

@@ -133,7 +133,7 @@ func TestUpgrade(t *testing.T) {
 	if err := Upgrade(context.Background(), r, "/p/Brewfile"); err != nil {
 		t.Fatalf("Upgrade() error: %v", err)
 	}
-	if want := "brew bundle install --file=/p/Brewfile --upgrade --no-cleanup"; r.argv(0) != want {
+	if want := "brew bundle install --file=/p/Brewfile --upgrade"; r.argv(0) != want {
 		t.Errorf("argv = %q, want %q", r.argv(0), want)
 	}
 }
