@@ -13,3 +13,6 @@ CLAUDE.md
 # release-please writes both; its release PRs must not trip the format gate
 CHANGELOG.md
 .release-please-manifest.json
+
+# synced verbatim from github-settings; a prettier reindent would fight the sync
+.github/workflows/add-to-project.yaml
