@@ -66,6 +66,12 @@ scheme = "slate"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to system preference"
 
+# Preference storage (the cookie-consent choice, colour palette, …) is keyed
+# by this scope, which defaults to the site's own subpath. Every site under
+# oss.bitwisemedia.uk sets "/" so one consent answer applies domain-wide.
+[project.extra]
+scope = "/"
+
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
 link = "https://github.com/bitwise-media-group/dotty"
