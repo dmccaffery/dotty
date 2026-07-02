@@ -43,4 +43,5 @@ and need no touch per signature.
 * [dotty signing-key list](dotty_signing-key_list.md)	 - List the signing keys on plugged-in security keys.
 * [dotty signing-key new](dotty_signing-key_new.md)	 - Create a resident SSH signing key on a security key.
 * [dotty signing-key sign](dotty_signing-key_sign.md)	 - Sign a payload with a signing key (ssh-keygen proxy).
+* [dotty signing-key trust](dotty_signing-key_trust.md)	 - Trust plugged-in keys' signatures in the git allowed_signers file.
 

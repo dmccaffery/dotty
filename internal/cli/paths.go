@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // dotty's on-disk layout is split for privacy: ConfigDir holds shareable
@@ -41,6 +42,24 @@ func xdgDir(envVar, fallback string) (string, error) {
 		base = filepath.Join(home, fallback)
 	}
 	return filepath.Join(base, "dotty"), nil
+}
+
+// ExpandHome replaces a leading ~ (bare or ~/) in path with the user's home
+// directory. Any other path, including the ~user form, is returned unchanged —
+// git config paths like gpg.ssh.allowedSignersFile lean on ~ for the home dir,
+// which the shell would normally expand but a captured config value does not.
+func ExpandHome(path string) (string, error) {
+	if path != "~" && !strings.HasPrefix(path, "~/") {
+		return path, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve home directory: %w", err)
+	}
+	if path == "~" {
+		return home, nil
+	}
+	return filepath.Join(home, path[2:]), nil
 }
 
 // EnsureDir creates path (and parents) if missing and enforces perm on the

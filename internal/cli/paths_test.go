@@ -68,6 +68,35 @@ func TestDataDir(t *testing.T) {
 	}
 }
 
+func TestExpandHome(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("home: %v", err)
+	}
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "bare tilde", in: "~", want: home},
+		{name: "tilde slash", in: "~/.ssh/allowed_signers", want: filepath.Join(home, ".ssh", "allowed_signers")},
+		{name: "absolute untouched", in: "/etc/ssh/allowed_signers", want: "/etc/ssh/allowed_signers"},
+		{name: "relative untouched", in: "keys/allowed_signers", want: "keys/allowed_signers"},
+		{name: "tilde-user form untouched", in: "~root/.ssh/allowed_signers", want: "~root/.ssh/allowed_signers"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExpandHome(tt.in)
+			if err != nil {
+				t.Fatalf("ExpandHome(%q) error: %v", tt.in, err)
+			}
+			if got != tt.want {
+				t.Errorf("ExpandHome(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestEnsureDir(t *testing.T) {
 	t.Run("creates nested directories with perm", func(t *testing.T) {
 		dir := filepath.Join(t.TempDir(), "a", "b")

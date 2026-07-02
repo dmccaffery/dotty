@@ -126,6 +126,17 @@ device as well as the stub.`,
 		_, _ = fmt.Fprint(ios.Out, string(pub))
 		tui.Successf(ios, "Created %s signing key for %q on YubiKey %s", typ, username, device.Serial)
 		tui.Infof(ios, "Stub: %s", stub)
+
+		// Trust the new key (and any others on the plugged-in YubiKeys) so git can
+		// verify what it signs. Best-effort: the key is already enrolled, so a
+		// missing user.email or unwritable allowed_signers must not fail the run.
+		refs, err := pluggedStubs(cmd.Context(), runner, dataDir, store, "", "")
+		if err != nil {
+			tui.Warnf(ios, "could not list keys to trust: %v", err)
+		} else if err := trustKeys(cmd.Context(), ios, runner, "", refs); err != nil {
+			tui.Warnf(ios, "could not update allowed_signers: %v", err)
+		}
+
 		tui.Infof(ios, "Set up git commit signing with: dotty signing-key sign --print-git-config")
 		return nil
 	},
