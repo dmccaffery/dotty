@@ -57,7 +57,7 @@ with no Brewfile gets one dumped from the currently installed brews.`,
 				}
 				options[i] = tui.Option{Label: label, Value: p.Name}
 			}
-			name, err = tui.Select(ios, "Activate which profile?", options)
+			name, err = tui.FuzzySelect(ios, "Activate which profile?", options)
 			if errors.Is(err, tui.ErrAborted) {
 				return nil // esc backs out without changing anything
 			}

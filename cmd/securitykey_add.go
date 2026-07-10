@@ -120,7 +120,7 @@ func pickSerialForAdd(cmd *cobra.Command, ios cli.IOStreams, store *securitykey.
 			options = append(options, tui.Option{Label: securitykey.SerialLabel(store, s), Value: s})
 		}
 		options = append(options, tui.Option{Label: "(enter a serial manually)", Value: manual})
-		choice, err := tui.Select(ios, "Alias which YubiKey?", options)
+		choice, err := tui.FuzzySelect(ios, "Alias which YubiKey?", options)
 		if err != nil {
 			return "", err
 		}

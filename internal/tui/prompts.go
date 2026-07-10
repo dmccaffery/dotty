@@ -26,12 +26,12 @@ type Option struct {
 	Value string
 }
 
-// maxPromptRows caps how many rows a picklist field renders. Without a cap
-// huh sizes the viewport to the full option count, so a long list repaints
-// hundreds of lines per frame and floods the terminal. Longer lists scroll
-// inside the viewport, and fuzzy filtering still searches every option, so
-// typing surfaces entries that have not rendered yet. Lists at or under the
-// cap keep huh's auto height (no blank padding rows).
+// maxPromptRows caps how many rows a picklist renders (the FuzzySelect window
+// and the MultiSelect viewport). Without a cap huh sizes a static-options
+// field to the full option count, so a long list repaints hundreds of lines
+// per frame and floods the terminal. Longer lists scroll inside the window,
+// and filtering still searches every option, so typing surfaces entries that
+// have not rendered yet.
 const maxPromptRows = 14
 
 // Confirm asks a yes/no question. description may be empty.
@@ -84,27 +84,6 @@ func MultiSelect(ios cli.IOStreams, title string, options []Option) ([]string, e
 		return nil, err
 	}
 	return values, nil
-}
-
-// Select presents a fuzzy-filterable picklist (huh filters on "/" and typing)
-// and returns the chosen option's Value.
-func Select(ios cli.IOStreams, title string, options []Option) (string, error) {
-	var value string
-	field := selectField(title, options, &value)
-	if err := runForm(ios, field); err != nil {
-		return "", err
-	}
-	return value, nil
-}
-
-// selectField builds the picklist field Select runs, split out so tests and
-// benchmarks can exercise its sizing and rendering without a terminal.
-func selectField(title string, options []Option, value *string) *huh.Select[string] {
-	field := huh.NewSelect[string]().Title(title).Options(huhOptions(options)...).Filtering(true).Value(value)
-	if len(options) > maxPromptRows {
-		field.Height(maxPromptRows)
-	}
-	return field
 }
 
 // huhOptions converts dotty options to huh's option type.

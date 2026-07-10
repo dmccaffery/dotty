@@ -6,6 +6,7 @@ package securitykey
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -65,7 +66,7 @@ func PickSerial(ios cli.IOStreams, store *Store, serials []string) (string, erro
 	for i, serial := range serials {
 		options[i] = tui.Option{Label: SerialLabel(store, serial), Value: serial}
 	}
-	return tui.Select(ios, "Which YubiKey?", options)
+	return tui.FuzzySelect(ios, "Which YubiKey?", options)
 }
 
 // SerialLabel renders a serial with its aliases for pickers and tables.
@@ -98,7 +99,7 @@ func SelectDeviceForEnroll(
 	if err != nil {
 		return Device{}, err
 	}
-	if wantSerial != "" && !contains(serials, wantSerial) {
+	if wantSerial != "" && !slices.Contains(serials, wantSerial) {
 		return Device{}, fmt.Errorf("YubiKey %s is not connected", wantSerial)
 	}
 	switch len(serials) {
@@ -219,13 +220,4 @@ func toSet(items []string) map[string]bool {
 		set[item] = true
 	}
 	return set
-}
-
-func contains(items []string, want string) bool {
-	for _, item := range items {
-		if item == want {
-			return true
-		}
-	}
-	return false
 }
