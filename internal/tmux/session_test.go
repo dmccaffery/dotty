@@ -6,6 +6,7 @@ package tmux
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -212,5 +213,32 @@ func TestFindRepos(t *testing.T) {
 	slices.Sort(got)
 	if !slices.Equal(got, want) {
 		t.Errorf("FindRepos = %v, want %v", got, want)
+	}
+}
+
+// BenchmarkFindRepos measures the repo walk over a tree shaped like a real
+// ~/Repos: 20 orgs of 25 repos (each with content dirs that must not be
+// descended into) plus deep non-repo noise that the depth limit prunes.
+func BenchmarkFindRepos(b *testing.B) {
+	root := b.TempDir()
+	for org := range 20 {
+		for repo := range 25 {
+			dir := filepath.Join(root, fmt.Sprintf("org-%02d", org), fmt.Sprintf("repo-%02d", repo))
+			for _, sub := range []string{".git", "src", "docs"} {
+				if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
+					b.Fatal(err)
+				}
+			}
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(root, "noise", "a", "b", "c", "d"), 0o755); err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+	for b.Loop() {
+		if repos := FindRepos(root, 4); len(repos) != 500 {
+			b.Fatalf("found %d repos, want 500", len(repos))
+		}
 	}
 }
