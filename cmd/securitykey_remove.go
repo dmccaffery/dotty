@@ -6,7 +6,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -36,11 +37,7 @@ selections are removed in one go.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ios := cli.System()
-		dataDir, err := cli.DataDir()
-		if err != nil {
-			return err
-		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
@@ -118,11 +115,7 @@ func aliasTree(cmd *cobra.Command, ios cli.IOStreams, bySerial map[string][]secu
 		}
 	}
 
-	serials := make([]string, 0, len(bySerial))
-	for serial := range bySerial {
-		serials = append(serials, serial)
-	}
-	sort.Strings(serials)
+	serials := slices.Sorted(maps.Keys(bySerial))
 
 	nodes := make([]tui.TreeNode, 0, len(serials))
 	for _, serial := range serials {

@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -54,7 +55,7 @@ a different file.`,
 		if err != nil {
 			return err
 		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
@@ -94,6 +95,12 @@ func pluggedStubs(
 			return nil, fmt.Errorf("YubiKey %s is not connected", want)
 		}
 		serials = []string{want}
+	}
+	if serials, err = filterAllowedSerials(serials); err != nil {
+		return nil, err
+	}
+	if len(serials) == 0 {
+		return nil, errors.New("no connected YubiKey is allowed for the active profile (see dotty security-key allow)")
 	}
 	return signingkey.Scan(dataDir, serials, user)
 }

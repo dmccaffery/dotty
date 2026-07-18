@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -46,13 +45,16 @@ preferring the ed25519 key when a user has several types enrolled.`,
 		if err != nil {
 			return err
 		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
 
 		serial, err := securitykey.ResolveSerial(cmd.Context(), newRunner(ios), store, ios, signingKeyFlags.SecurityKey)
 		if err != nil {
+			return err
+		}
+		if err := requireAllowedSerial(serial); err != nil {
 			return err
 		}
 		refs, err := signingkey.Scan(dataDir, []string{serial}, signingKeyFlags.Username)
@@ -64,8 +66,7 @@ preferring the ed25519 key when a user has several types enrolled.`,
 		}
 
 		if gitMode {
-			// Deterministic choice: ed25519 (the default type) wins.
-			sort.Slice(refs, func(i, j int) bool { return refs[i].Type > refs[j].Type })
+			preferDefaultKeyType(refs)
 			_, pub, err := signingkey.Read(refs[0])
 			if err != nil {
 				return err

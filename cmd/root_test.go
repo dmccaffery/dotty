@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -34,15 +35,24 @@ func TestFlagBeforeVerb(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dataDir := t.TempDir()
-			t.Setenv("XDG_DATA_HOME", dataDir)
-			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			configDir := t.TempDir()
+			t.Setenv("XDG_DATA_HOME", t.TempDir())
+			t.Setenv("XDG_CONFIG_HOME", configDir)
+
+			// The alias store lives in the active profile.
+			profileDir := filepath.Join(configDir, "dotty", "p")
+			if err := os.MkdirAll(profileDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("p", filepath.Join(configDir, "dotty", "active-profile")); err != nil {
+				t.Fatal(err)
+			}
 
 			if err := execDotty(t, tt.args...); err != nil {
 				t.Fatalf("execute %v: %v", tt.args, err)
 			}
 
-			store, err := securitykey.LoadStore(securitykey.StorePath(filepath.Join(dataDir, "dotty")))
+			store, err := securitykey.LoadStore(securitykey.StorePath(profileDir))
 			if err != nil {
 				t.Fatal(err)
 			}

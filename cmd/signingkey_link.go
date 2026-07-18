@@ -6,7 +6,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -48,13 +47,16 @@ connect:
 		if err != nil {
 			return fmt.Errorf("resolve home directory: %w", err)
 		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
 
 		serial, err := securitykey.ResolveSerial(cmd.Context(), newRunner(ios), store, ios, signingKeyFlags.SecurityKey)
 		if err != nil {
+			return err
+		}
+		if err := requireAllowedSerial(serial); err != nil {
 			return err
 		}
 		refs, err := signingkey.Scan(dataDir, []string{serial}, signingKeyFlags.Username)
@@ -64,8 +66,7 @@ connect:
 		if len(refs) == 0 {
 			return fmt.Errorf("%w for YubiKey %s (run `dotty signing-key new`)", signingkey.ErrKeyNotFound, serial)
 		}
-		// Deterministic choice: ed25519 (the default type) wins.
-		sort.Slice(refs, func(i, j int) bool { return refs[i].Type > refs[j].Type })
+		preferDefaultKeyType(refs)
 
 		linkPath := signingkey.DefaultLinkPath(home)
 		if len(args) == 1 {

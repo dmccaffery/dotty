@@ -50,87 +50,98 @@ to one connected key. Aliases are not set here — add them with
   dotty signing-key import --security-key=work ~/keys/id_ed25519_sk_deavon`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ios := cli.System()
-		runner := newRunner(ios)
-		ctx := cmd.Context()
-		path := args[0]
-
-		if !ios.IsInteractive() {
-			return fmt.Errorf("import needs an interactive terminal: ssh-keygen prompts for the FIDO PIN and a touch")
-		}
-
-		dataDir, err := cli.DataDir()
-		if err != nil {
-			return err
-		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
-		if err != nil {
-			return err
-		}
-
-		srcRefs, err := signingkey.ScanDir(path)
-		if err != nil {
-			return err
-		}
-		if u := signingKeyFlags.Username; u != "" {
-			srcRefs = filterByUser(srcRefs, u)
-		}
-		if len(srcRefs) == 0 {
-			return fmt.Errorf("no signing-key stubs found at %s", path)
-		}
-
-		serials, err := importTargetSerials(ctx, runner, store)
-		if err != nil {
-			return err
-		}
-
-		residentBySerial := make(map[string][]string, len(serials))
-		for _, serial := range serials {
-			scratch, err := os.MkdirTemp("", "dotty-import-")
-			if err != nil {
-				return fmt.Errorf("create scratch dir: %w", err)
-			}
-			defer func() { _ = os.RemoveAll(scratch) }()
-
-			tui.Infof(ios, "Touch YubiKey %s when ssh-keygen asks, and enter its FIDO PIN", serial)
-			ids, err := signingkey.ResidentPubKeys(ctx, runner, scratch)
-			if err != nil {
-				tui.Warnf(ios, "could not read resident keys from YubiKey %s: %v", serial, err)
-				continue
-			}
-			residentBySerial[serial] = ids
-		}
-
-		imported, skipped, err := signingkey.Import(srcRefs, residentBySerial, dataDir, func(dest string) (bool, error) {
-			ok, err := tui.Confirm(ios,
-				fmt.Sprintf("A stub already exists at %s. Replace it?", dest),
-				"The existing stub is overwritten with the imported one.")
-			if errors.Is(err, tui.ErrAborted) {
-				return false, nil
-			}
-			return ok, err
-		})
-		if err != nil {
-			return err
-		}
-
-		for _, ref := range skipped {
-			tui.Warnf(ios, "skipping %s: no connected YubiKey holds this credential", ref.PrivPath)
-		}
-		if len(imported) == 0 {
-			return fmt.Errorf("no stubs at %s matched a connected YubiKey", path)
-		}
-
-		if err := removeImportedSources(ios, imported, signingKeyImportFlags.Remove); err != nil {
-			return err
-		}
-
-		tui.Successf(ios, "Imported %d signing key(s)", len(imported))
-		for _, imp := range imported {
-			tui.Infof(ios, "%s → YubiKey %s (%s, %s)", imp.Dest, imp.Serial, imp.Source.Type, imp.Source.User)
-		}
-		return nil
+		return importSigningKeys(cmd.Context(), cli.System(),
+			args[0], signingKeyFlags.Username, signingKeyImportFlags.Remove)
 	},
+}
+
+// importSigningKeys is the full `signing-key import` flow: verify stubs at
+// path against the connected YubiKeys and file the matches. init's
+// security-key step calls it too.
+func importSigningKeys(ctx context.Context, ios cli.IOStreams, path, username string, remove bool) error {
+	runner := newRunner(ios)
+
+	if !ios.IsInteractive() {
+		return fmt.Errorf("import needs an interactive terminal: ssh-keygen prompts for the FIDO PIN and a touch")
+	}
+
+	dataDir, err := cli.DataDir()
+	if err != nil {
+		return err
+	}
+	store, err := keyStore()
+	if err != nil {
+		return err
+	}
+
+	srcRefs, err := signingkey.ScanDir(path)
+	if err != nil {
+		return err
+	}
+	if username != "" {
+		srcRefs = filterByUser(srcRefs, username)
+	}
+	if len(srcRefs) == 0 {
+		return fmt.Errorf("no signing-key stubs found at %s", path)
+	}
+
+	serials, err := importTargetSerials(ctx, runner, store)
+	if err != nil {
+		return err
+	}
+	if serials, err = filterAllowedSerials(serials); err != nil {
+		return err
+	}
+	if len(serials) == 0 {
+		return errors.New("no connected YubiKey is allowed for the active profile (see dotty security-key allow)")
+	}
+
+	residentBySerial := make(map[string][]string, len(serials))
+	for _, serial := range serials {
+		scratch, err := os.MkdirTemp("", "dotty-import-")
+		if err != nil {
+			return fmt.Errorf("create scratch dir: %w", err)
+		}
+		defer func() { _ = os.RemoveAll(scratch) }()
+
+		tui.Infof(ios, "Touch YubiKey %s when ssh-keygen asks, and enter its FIDO PIN", serial)
+		ids, err := signingkey.ResidentPubKeys(ctx, runner, scratch)
+		if err != nil {
+			tui.Warnf(ios, "could not read resident keys from YubiKey %s: %v", serial, err)
+			continue
+		}
+		residentBySerial[serial] = ids
+	}
+
+	imported, skipped, err := signingkey.Import(srcRefs, residentBySerial, dataDir, func(dest string) (bool, error) {
+		ok, err := tui.Confirm(ios,
+			fmt.Sprintf("A stub already exists at %s. Replace it?", dest),
+			"The existing stub is overwritten with the imported one.")
+		if errors.Is(err, tui.ErrAborted) {
+			return false, nil
+		}
+		return ok, err
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, ref := range skipped {
+		tui.Warnf(ios, "skipping %s: no connected YubiKey holds this credential", ref.PrivPath)
+	}
+	if len(imported) == 0 {
+		return fmt.Errorf("no stubs at %s matched a connected YubiKey", path)
+	}
+
+	if err := removeImportedSources(ios, imported, remove); err != nil {
+		return err
+	}
+
+	tui.Successf(ios, "Imported %d signing key(s)", len(imported))
+	for _, imp := range imported {
+		tui.Infof(ios, "%s → YubiKey %s (%s, %s)", imp.Dest, imp.Serial, imp.Source.Type, imp.Source.User)
+	}
+	return nil
 }
 
 // filterByUser keeps only the stubs enrolled under user.

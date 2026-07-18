@@ -34,5 +34,7 @@ serial. Aliases live in the private dotty data directory
 
 * [dotty](dotty.md)	 - Utilities for a terminal-driven workflow and dotfiles.
 * [dotty security-key add](dotty_security-key_add.md)	 - Add a named alias for a security key.
+* [dotty security-key allow](dotty_security-key_allow.md)	 - Restrict a profile to specific security keys.
+* [dotty security-key disallow](dotty_security-key_disallow.md)	 - Remove security keys from a profile's allowlist.
 * [dotty security-key remove](dotty_security-key_remove.md)	 - Remove security key aliases.
 

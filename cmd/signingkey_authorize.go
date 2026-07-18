@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -49,7 +50,8 @@ authorized_keys line says so. Extend it for more control — e.g.
 	Example: `  dotty signing-key authorize deavon@server
   dotty signing-key authorize --security-key=work root@host
   dotty signing-key authorize --path=/etc/ssh/keys/authorized_keys admin@host`,
-	Args: cobra.ExactArgs(1),
+	Aliases: []string{"authorise", "auth"},
+	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ios := cli.System()
 		host := args[0]
@@ -57,14 +59,15 @@ authorized_keys line says so. Extend it for more control — e.g.
 		if !ios.IsInteractive() {
 			return fmt.Errorf(
 				"authorize needs an interactive terminal: it prompts for the key to use and ssh prompts to reach %s",
-				host)
+				host,
+			)
 		}
 
 		dataDir, err := cli.DataDir()
 		if err != nil {
 			return err
 		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
@@ -125,10 +128,8 @@ func selectPluggedKey(
 			}
 		}
 		serials = nil
-		for _, s := range plugged {
-			if s == want {
-				serials = []string{s}
-			}
+		if slices.Contains(plugged, want) {
+			serials = []string{want}
 		}
 	}
 	if len(serials) == 0 {
@@ -141,7 +142,8 @@ func selectPluggedKey(
 	}
 	if len(refs) == 0 {
 		return signingkey.KeyRef{}, false, fmt.Errorf(
-			"no signing keys for the plugged-in YubiKey(s) (run `dotty signing-key new`)")
+			"no signing keys for the plugged-in YubiKey(s) (run `dotty signing-key new`)",
+		)
 	}
 	if len(refs) == 1 {
 		return refs[0], true, nil
@@ -164,10 +166,8 @@ func selectPluggedKey(
 	if err != nil || !ok {
 		return signingkey.KeyRef{}, false, err
 	}
-	for _, ref := range refs {
-		if ref.PrivPath == value {
-			return ref, true, nil
-		}
+	if i := slices.IndexFunc(refs, func(ref signingkey.KeyRef) bool { return ref.PrivPath == value }); i >= 0 {
+		return refs[i], true, nil
 	}
 	return signingkey.KeyRef{}, false, nil
 }

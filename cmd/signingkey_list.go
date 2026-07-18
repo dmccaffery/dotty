@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,7 +35,7 @@ Without a terminal the table prints plainly and nothing is selectable.`,
 		if err != nil {
 			return err
 		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
@@ -52,10 +53,8 @@ Without a terminal the table prints plainly and nothing is selectable.`,
 				}
 			}
 			serials = nil
-			for _, s := range plugged {
-				if s == want {
-					serials = []string{s}
-				}
+			if slices.Contains(plugged, want) {
+				serials = []string{want}
 			}
 		}
 		if len(serials) == 0 {

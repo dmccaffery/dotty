@@ -53,7 +53,7 @@ the namespace to "file".`,
 		if err != nil {
 			return err
 		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}
@@ -62,6 +62,9 @@ the namespace to "file".`,
 		resolveDefault := func() (string, error) {
 			serial, err := securitykey.ResolveSerial(cmd.Context(), newRunner(ios), store, ios, own["security-key"])
 			if err != nil {
+				return "", err
+			}
+			if err := requireAllowedSerial(serial); err != nil {
 				return "", err
 			}
 			refs, err := signingkey.Scan(dataDir, []string{serial}, own["username"])
@@ -77,7 +80,11 @@ the namespace to "file".`,
 			return refs[0].PrivPath, nil
 		}
 		scan := func() ([]signingkey.KeyRef, error) {
-			return signingkey.Scan(dataDir, nil, "")
+			refs, err := signingkey.Scan(dataDir, nil, "")
+			if err != nil {
+				return nil, err
+			}
+			return filterAllowedRefs(refs)
 		}
 
 		finalArgs, err := signingkey.RewriteSignArgs(rest, resolveDefault, scan, os.ReadFile)

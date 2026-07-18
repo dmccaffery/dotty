@@ -144,9 +144,9 @@ func TestLoadStore(t *testing.T) {
 		}
 	})
 
-	t.Run("save enforces private permissions", func(t *testing.T) {
-		dataDir := t.TempDir()
-		s, err := LoadStore(StorePath(dataDir))
+	t.Run("save writes repo-friendly permissions", func(t *testing.T) {
+		profileDir := t.TempDir()
+		s, err := LoadStore(StorePath(profileDir))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -156,19 +156,12 @@ func TestLoadStore(t *testing.T) {
 		if err := s.Save(); err != nil {
 			t.Fatal(err)
 		}
-		dirInfo, err := os.Stat(filepath.Join(dataDir, "security-key"))
+		fileInfo, err := os.Stat(StorePath(profileDir))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if perm := dirInfo.Mode().Perm(); perm != 0o700 {
-			t.Errorf("dir perm = %o, want 700", perm)
-		}
-		fileInfo, err := os.Stat(StorePath(dataDir))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if perm := fileInfo.Mode().Perm(); perm != 0o600 {
-			t.Errorf("file perm = %o, want 600", perm)
+		if perm := fileInfo.Mode().Perm(); perm != 0o644 {
+			t.Errorf("file perm = %o, want 644", perm)
 		}
 	})
 }

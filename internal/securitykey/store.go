@@ -10,7 +10,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/bitwise-media-group/dotty/internal/cli"
@@ -42,14 +43,16 @@ type keyEntry struct {
 	Aliases []Alias `json:"aliases"`
 }
 
-// StorePath returns the aliases.json location under the dotty data dir.
-func StorePath(dataDir string) string {
-	return filepath.Join(dataDir, "security-key", "aliases.json")
+// StorePath returns the alias store's location inside a profile directory.
+// The mapping travels with the profile (serials identify hardware a machine
+// class owns); only the key stubs stay in the private data directory.
+func StorePath(profileDir string) string {
+	return filepath.Join(profileDir, "security-keys.json")
 }
 
 // LoadStore reads the alias store at path. A missing file is an empty store;
 // a corrupt or duplicate-ridden file is a hard error naming the file — never
-// silently recreated, it lives in the private data repo.
+// silently recreated, it travels with the dotfiles repository.
 func LoadStore(path string) (*Store, error) {
 	s := &Store{path: path, doc: storeDoc{Version: storeVersion, Keys: map[string]*keyEntry{}}}
 	data, err := os.ReadFile(path)
@@ -83,10 +86,10 @@ func LoadStore(path string) (*Store, error) {
 	return s, nil
 }
 
-// Save writes the store atomically with private permissions (0700 dir,
-// 0600 file).
+// Save writes the store atomically. It is profile content that travels with
+// the dotfiles repository, so it takes ordinary repo permissions.
 func (s *Store) Save() error {
-	if err := cli.EnsureDir(filepath.Dir(s.path), 0o700); err != nil {
+	if err := cli.EnsureDir(filepath.Dir(s.path), 0o755); err != nil {
 		return err
 	}
 	s.doc.Version = storeVersion
@@ -94,7 +97,7 @@ func (s *Store) Save() error {
 	if err != nil {
 		return fmt.Errorf("encode alias store: %w", err)
 	}
-	return cli.AtomicWriteFile(s.path, append(data, '\n'), 0o600)
+	return cli.AtomicWriteFile(s.path, append(data, '\n'), 0o644)
 }
 
 // Add registers an alias for serial, enforcing global name uniqueness.
@@ -123,12 +126,9 @@ func (s *Store) Remove(names ...string) int {
 	removed := 0
 	for _, name := range names {
 		for serial, entry := range s.doc.Keys {
-			for i, a := range entry.Aliases {
-				if a.Name == name {
-					entry.Aliases = append(entry.Aliases[:i], entry.Aliases[i+1:]...)
-					removed++
-					break
-				}
+			if i := slices.IndexFunc(entry.Aliases, func(a Alias) bool { return a.Name == name }); i >= 0 {
+				entry.Aliases = slices.Delete(entry.Aliases, i, i+1)
+				removed++
 			}
 			if len(entry.Aliases) == 0 {
 				delete(s.doc.Keys, serial)
@@ -152,7 +152,7 @@ func (s *Store) AliasesBySerial() map[string][]Alias {
 	out := make(map[string][]Alias, len(s.doc.Keys))
 	for serial, entry := range s.doc.Keys {
 		aliases := append([]Alias(nil), entry.Aliases...)
-		sort.Slice(aliases, func(i, j int) bool { return aliases[i].Name < aliases[j].Name })
+		slices.SortFunc(aliases, func(a, b Alias) int { return strings.Compare(a.Name, b.Name) })
 		out[serial] = aliases
 	}
 	return out
@@ -166,16 +166,14 @@ func (s *Store) Names() []string {
 			names = append(names, a.Name)
 		}
 	}
-	sort.Strings(names)
+	slices.Sort(names)
 	return names
 }
 
 func (s *Store) owner(name string) (string, bool) {
 	for serial, entry := range s.doc.Keys {
-		for _, a := range entry.Aliases {
-			if a.Name == name {
-				return serial, true
-			}
+		if slices.ContainsFunc(entry.Aliases, func(a Alias) bool { return a.Name == name }) {
+			return serial, true
 		}
 	}
 	return "", false

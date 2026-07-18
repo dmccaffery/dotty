@@ -36,11 +36,7 @@ that step can be skipped.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ios := cli.System()
-		dataDir, err := cli.DataDir()
-		if err != nil {
-			return err
-		}
-		store, err := securitykey.LoadStore(securitykey.StorePath(dataDir))
+		store, err := keyStore()
 		if err != nil {
 			return err
 		}

@@ -4,8 +4,19 @@
 package main
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/spf13/cobra"
+
+	"github.com/bitwise-media-group/dotty/internal/signingkey"
 )
+
+// preferDefaultKeyType sorts refs so ed25519 (the default key type) comes
+// first, making single-key selection deterministic.
+func preferDefaultKeyType(refs []signingkey.KeyRef) {
+	slices.SortFunc(refs, func(a, b signingkey.KeyRef) int { return cmp.Compare(b.Type, a.Type) })
+}
 
 // SigningKeyFlags holds the flags shared by the signing-key verbs, persistent
 // on the noun so they parse before or after the verb.
