@@ -77,9 +77,9 @@ Command: new
 
 Create a system-level profile that can be copied across machines. A profile
 creates `profiles/<name>` in the dotfiles repository, exposed on the machine as
-a `${XDG_CONFIG_HOME}/dotty/<name>` symlink into it. Once a profile is
-created, ask the user if they want to activate it. Upon confirmation, activate
-the profile using the command for `dotty profile activate` defined below.
+a `${XDG_CONFIG_HOME}/dotty/<name>` symlink into it. Once a profile is created,
+ask the user if they want to activate it. Upon confirmation, activate the
+profile using the command for `dotty profile activate` defined below.
 
 ```text
 dotty profile new [--name=<name>] [--description=<description>] [--activate]
@@ -153,9 +153,8 @@ profile.json, travels with the dotfiles repository, and activating another
 profile swaps it — serials identify hardware a machine class owns, not a
 machine. Arguments are serials or aliases; without arguments, an interactive
 picklist offers the known and connected keys with the current selection
-preselected.
-`dotty init --allowed-serials=<a,b>` (or the wizard's restriction question,
-asked after key enrollment) seeds the list.
+preselected. `dotty init --allowed-serials=<a,b>` (or the wizard's restriction
+question, asked after key enrollment) seeds the list.
 
 ```text
 dotty [--profile=<name>] security-key allow [<serial>|<alias>...]
@@ -539,8 +538,8 @@ declined sudo never unwinds a completed init.
 
 Profiles are shared through the repository and activated per machine: one
 dotfiles repo serves every machine, and a profile (personal, work) captures how
-a class of machines differs — a `profile.json` (metadata plus the wizard
-answers in one document), the composed Brewfile, a `home/` tree holding every
+a class of machines differs — a `profile.json` (metadata plus the wizard answers
+in one document), the composed Brewfile, a `home/` tree holding every
 `$HOME`-relative file whose content varies by profile (paths like the
 repositories directory, agent sandbox roots, marketplace enablement, signing
 config), and loose files like `env.zsh` and the git includes at the profile
@@ -548,20 +547,20 @@ root. The profile's `env.zsh` also relocates every selected agent under XDG
 (`CODEX_HOME` with `CODEX_SQLITE_HOME` pointed at XDG data, `CLAUDE_CONFIG_DIR`
 with `CLAUDE_CODE_PLUGIN_CACHE_DIR` pointed at XDG cache, `GROK_HOME`), so agent
 config lives in `~/.config/<agent>` like every other tool while runtime state
-and caches stay out of the dotfiles-linked directories. The agent worktree location is a profile setting too
-(`--worktrees`, default the repo-relative `.worktrees`, or an absolute path for
-one shared root): it lands in the shared gitignore when repo-relative, feeds the
-hardened agents' sandbox grants so worktrees never prompt, renders the
-per-profile git include that disables commit/tag signing inside linked worktrees
-(git matches `includeIf gitdir:` against the resolved `.git/worktrees/<name>`
-path, so the blanket pattern covers them wherever they live), is exported as
-`DOTTY_WORKTREES` for tooling like the nvim session picker, and will drive
-`dotty worktree`. All of it lives under `profiles/<name>` in the repo, with
-`${XDG_CONFIG_HOME}/dotty/<name>` a symlink into it. Shared files never carry a
-profile-specific value; they reach profile values only through the
-`${XDG_CONFIG_HOME}/dotty/active-profile` symlink — the only real machine-local
-state — so `dotty profile activate` retargets everything at once (e.g.
-`~/.config/dotty/active-profile/env.zsh`).
+and caches stay out of the dotfiles-linked directories. The agent worktree
+location is a profile setting too (`--worktrees`, default the repo-relative
+`.worktrees`, or an absolute path for one shared root): it lands in the shared
+gitignore when repo-relative, feeds the hardened agents' sandbox grants so
+worktrees never prompt, renders the per-profile git include that disables
+commit/tag signing inside linked worktrees (git matches `includeIf gitdir:`
+against the resolved `.git/worktrees/<name>` path, so the blanket pattern covers
+them wherever they live), is exported as `DOTTY_WORKTREES` for tooling like the
+nvim session picker, and will drive `dotty worktree`. All of it lives under
+`profiles/<name>` in the repo, with `${XDG_CONFIG_HOME}/dotty/<name>` a symlink
+into it. Shared files never carry a profile-specific value; they reach profile
+values only through the `${XDG_CONFIG_HOME}/dotty/active-profile` symlink — the
+only real machine-local state — so `dotty profile activate` retargets everything
+at once (e.g. `~/.config/dotty/active-profile/env.zsh`).
 
 After confirmation, init renders the selected template components (shared files
 into the repo, profile-varying files into `profiles/<name>`), composes the
