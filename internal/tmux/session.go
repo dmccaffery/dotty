@@ -24,12 +24,16 @@ type SessionRunner interface {
 
 // agentWindows lists the coding agents that get a window when installed.
 // Each window is inserted directly after the editor window, so the final
-// order is the reverse of this one (with the shell window first).
+// order is the reverse of this one (with the shell window first). The window
+// glyphs are lobe-icons brand codepoints (U+F4000–U+F47FF), which render only
+// with the lobe-icons font installed and mapped in the terminal — both wired
+// up by `dotty init` (~/Library/Fonts/lobe-icons.ttf + ghostty's
+// font-codepoint-map); the pinned release lives in internal/fonts.
 var agentWindows = []struct{ bin, window string }{
-	{"opencode", "󰚩  opencode"},
-	{"grok", "  grok"},
-	{"codex", "󱙺  codex"},
-	{"claude", "󰯉  claude"},
+	{"opencode", "\U000F40D3  opencode"},
+	{"grok", "\U000F4079  grok"},
+	{"codex", "\U000F403E  codex"},
+	{"claude", "\U000F4036  claude"},
 }
 
 // SessionName derives the tmux session name from a repository path: its
