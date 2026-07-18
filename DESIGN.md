@@ -76,7 +76,8 @@ come later.
 Command: new
 
 Create a system-level profile that can be copied across machines. A profile
-creates a path under `${XDG_CONFIG_HOME}/dotty/<name>`. Once a profile is
+creates `profiles/<name>` in the dotfiles repository, exposed on the machine as
+a `${XDG_CONFIG_HOME}/dotty/<name>` symlink into it. Once a profile is
 created, ask the user if they want to activate it. Upon confirmation, activate
 the profile using the command for `dotty profile activate` defined below.
 
@@ -113,11 +114,13 @@ Manage hardware security keys.
 
 Command: add
 
-Add a named alias for a signing key based on its serial number. This should be
-retained in JSON or YAML in the data directory. If no name is specified, prompt
-the user for a name. Ensure that the provided name is unique. Offer to open an
-editor (default EDITOR) to provide a description if none is provided. The user
-may also skip this step.
+Add a named alias for a signing key based on its serial number. The
+serial-to-alias mapping is profile content: it lives in the profile directory
+(security-keys.json), travels with the dotfiles repository, and activating
+another profile swaps it — only the key stubs themselves stay in the private
+data directory. If no name is specified, prompt the user for a name. Ensure that
+the provided name is unique. Offer to open an editor (default EDITOR) to provide
+a description if none is provided. The user may also skip this step.
 
 ```text
 dotty security-key [--serial=<serial-number>] add [--name=<name>] [--description=<description>]
@@ -137,6 +140,39 @@ collapse and expand by serial number with the names underneath.
 dotty security-key [--serial=<serial-number>] remove [--name=<name>]
 ```
 
+## Allow security keys for a profile
+
+Command: allow
+
+Restrict a profile to specific security keys. Once a profile has an allowlist,
+its machines refuse every other key for signing, linking, enrollment, and import
+— so personal keys are never used against work devices, and vice versa. The list
+applies to the active profile unless the global `--profile` names another. Like
+the alias mapping, it is profile content: it lives in the profile's
+profile.json, travels with the dotfiles repository, and activating another
+profile swaps it — serials identify hardware a machine class owns, not a
+machine. Arguments are serials or aliases; without arguments, an interactive
+picklist offers the known and connected keys with the current selection
+preselected.
+`dotty init --allowed-serials=<a,b>` (or the wizard's restriction question,
+asked after key enrollment) seeds the list.
+
+```text
+dotty [--profile=<name>] security-key allow [<serial>|<alias>...]
+```
+
+## Disallow security keys for a profile
+
+Command: disallow
+
+Remove security keys from a profile's allowlist. Removing the last entry lifts
+the restriction — the profile allows every key again. Without arguments, an
+interactive picklist offers the currently allowed keys.
+
+```text
+dotty [--profile=<name>] security-key disallow [<serial>|<alias>...]
+```
+
 # Signing Keys
 
 Command: signing-key Aliases: ssh-key
@@ -148,6 +184,11 @@ If no serial/name is provided in any command and only one security key is
 currently plugged into the machine, use that key. If more than one security key
 is plugged into the machine, activate the touch on the yubikey and prompt the
 user to touch an yubikey to select it.
+
+When the active profile carries a security-key allowlist
+(`dotty security-key allow`), every key-using path — get, link, sign, new,
+import, trust — refuses keys outside it, naming the profile and the escape
+hatch.
 
 ## Create a new signing key
 
@@ -429,4 +470,206 @@ working directory; a missing file is an error with usage.
 
 ```text
 dotty env [--namespace=<ns>] run [--in-file=<file>] -- <command> [args...]
+```
+
+# Command: Init
+
+Command: init
+
+`init` (with `docs`, one of two sanctioned top-level verbs — it sets up the
+whole machine, not one noun) scaffolds a net-new dotfiles repository from a
+template embedded in the binary, driven by an interactive wizard. Every question
+mirrors a flag so the command also runs non-interactively; prompts only fill in
+what flags left unset, and nothing touches the filesystem until the user
+confirms a summary of what will happen.
+
+The wizard starts with the profile: when this machine (or the enclosing
+repository) already has profiles, a picklist offers them plus "create a new
+profile"; the global `--profile` or `--profile-name` selects one directly. A
+profile that already has answers seeds every question's default with them —
+re-running init, from inside the repository or anywhere after linking, walks the
+same interview with the stored choices preselected, so a machine class can be
+extended (or trimmed) later; non-interactive re-runs take the stored answers
+as-is. For a new profile the wizard asks for the repositories directory (default
+`~/Repos`) and the dotfiles repository path (default the enclosing repository
+when run from inside one — recognized by its `.dotty-version` marker, which
+records the dotty release that rendered it — else `<repos>/dotfiles`), both with
+tab-completable suggestions. The paths persist portably in the profile: the
+repositories directory home-relative, the repository relative to it, and
+rendered shell files use `${HOME}` so no machine-specific prefix enters the
+repository. The wizard also asks for a profile name when creating one (machine
+name by default), whether to seed the Brewfile from the installed packages,
+optional add-ons (nvim, btop, k9s, lazygit, lsd, tmux, yazi), and coding agents
+(claude-code, codex, opencode, antigravity, grok). Once at least one agent is
+selected, init offers the bitwise skills marketplace; choosing it wires the
+marketplace into every selected agent that supports one. ghostty, oh-my-posh,
+vivid, zsh, and git config are always included.
+
+With agents selected, init also asks whether to harden them. Hardening mirrors
+Claude Code's confinement into every selected agent's native config: sandboxed
+writes limited to the repositories directory and tool caches, denied reads of
+credential paths (~/.ssh, ~/.aws, ~/.gnupg, .env files), and ask-first
+permissions — claude's sandbox/permissions blocks, codex's Seatbelt
+workspace-write plus a PreToolUse deny hook, grok's sandbox profile and
+permission rules plus the same hook, and opencode's permission matrix.
+Unhardened agents keep only theme, hooks, and marketplace config. The choice is
+per profile: a work class can run hardened while a personal one does not.
+
+init then asks whether the machine class uses security keys. Answering yes
+renders the profile's signing config (gpg/ssh via dotty), the `~/.ssh/config`
+that signs and authenticates through `dotty signing-key link`, adds ykman and
+pinentry-mac to the Brewfile, creates the `dotty-ssh-askpass` applet symlink in
+the data directory (OpenSSH PIN prompts route through it to pinentry-mac, which
+caches the YubiKey PIN), and offers to import an existing resident-key stub or
+enroll a new key — the same flows as `dotty signing-key import` and `new`.
+Separately, when `~/.config/private/git/config` does not exist, init asks for
+the git identity and writes it there with `gpgSign` matching the security-key
+answer; the file is PII, lives outside both the repository and the profile, and
+is never overwritten.
+
+On macOS, init finishes with the system questions: a picklist of curated
+`defaults write` groups (keyboard, menu bar, trackpad, finder, screenshots,
+software update, spaces, dock, animations, gpg keychain — everything
+preselected), a wallpaper chosen from `~/.local/share/wallpapers` when that
+directory has images (dotty distributes no wallpapers; the private repo supplies
+them), and smart-card (PIV) login enforcement — off unless chosen, confirmed
+with a lock-out warning, and applied through sudo. The selections persist in the
+profile and re-apply on a re-run; the tweaks run last and best-effort, so a
+declined sudo never unwinds a completed init.
+
+Profiles are shared through the repository and activated per machine: one
+dotfiles repo serves every machine, and a profile (personal, work) captures how
+a class of machines differs — a `profile.json` (metadata plus the wizard
+answers in one document), the composed Brewfile, a `home/` tree holding every
+`$HOME`-relative file whose content varies by profile (paths like the
+repositories directory, agent sandbox roots, marketplace enablement, signing
+config), and loose files like `env.zsh` and the git includes at the profile
+root. The profile's `env.zsh` also relocates every selected agent under XDG
+(`CODEX_HOME` with `CODEX_SQLITE_HOME` pointed at XDG data, `CLAUDE_CONFIG_DIR`
+with `CLAUDE_CODE_PLUGIN_CACHE_DIR` pointed at XDG cache, `GROK_HOME`), so agent
+config lives in `~/.config/<agent>` like every other tool while runtime state
+and caches stay out of the dotfiles-linked directories. The agent worktree location is a profile setting too
+(`--worktrees`, default the repo-relative `.worktrees`, or an absolute path for
+one shared root): it lands in the shared gitignore when repo-relative, feeds the
+hardened agents' sandbox grants so worktrees never prompt, renders the
+per-profile git include that disables commit/tag signing inside linked worktrees
+(git matches `includeIf gitdir:` against the resolved `.git/worktrees/<name>`
+path, so the blanket pattern covers them wherever they live), is exported as
+`DOTTY_WORKTREES` for tooling like the nvim session picker, and will drive
+`dotty worktree`. All of it lives under `profiles/<name>` in the repo, with
+`${XDG_CONFIG_HOME}/dotty/<name>` a symlink into it. Shared files never carry a
+profile-specific value; they reach profile values only through the
+`${XDG_CONFIG_HOME}/dotty/active-profile` symlink — the only real machine-local
+state — so `dotty profile activate` retargets everything at once (e.g.
+`~/.config/dotty/active-profile/env.zsh`).
+
+After confirmation, init renders the selected template components (shared files
+into the repo, profile-varying files into `profiles/<name>`), composes the
+Brewfile, runs `git init` and stages everything (the first commit is left to the
+user so it can be signed), links the repository's `home` tree into `$HOME` plus
+the profile-varying files through active-profile, activates the profile, and
+downloads the pinned lobe-icons glyph font into the user font directory (a
+warning, never a failure, when offline). Re-running init against an existing
+repository and profile asks the same questions with the stored answers as the
+defaults; keeping them re-renders and re-links idempotently — which is also how
+a second machine of the same class adopts a freshly cloned repo, either run from
+inside the clone or with `--repo` naming it. Against a legacy-layout repository,
+re-running init first migrates it in place: profiles are lifted to top-level
+`profiles/<name>` directories, each per-profile `render/` dissolves into its
+profile root, `dotty.json` and `profile.json` merge into a single
+`profile.json`, and the tree of `$HOME`-relative entries is renamed to `home/`.
+
+```text
+dotty init [--repo=<dir>] [--repos-dir=<dir>] [--profile-name=<name>]
+           [--addons=<a,b>] [--agents=<a,b>] [--dump-brews] [--marketplace]
+           [--harden] [--security-keys] [--git-name=<name>] [--git-email=<email>]
+           [--allowed-serials=<a,b>] [--worktrees=<dir>]
+           [--macos-defaults=<a,b>] [--wallpaper=<image>] [--piv]
+           [--on-conflict=(backup|adopt|skip|fail)] [--yes]
+```
+
+# Command: Dotfiles
+
+Command: dotfiles
+
+Operate on the dotfiles repository init generated (or any repository with the
+same layout: a `home/` tree of `$HOME`-relative entries plus a `profiles/`
+directory of per-profile `profile.json` documents).
+
+`link` symlinks the repository's `home` tree into `$HOME` as a symlink farm:
+whole files and directories are linked folded, existing real directories are
+descended into, and stale symlinks are replaced. A real file in the way is a
+conflict resolved per `--on-conflict` (or interactively): `backup` moves it
+under `$XDG_DATA_HOME/dotty/backups/<timestamp>/` mirroring its absolute path,
+`adopt` moves it into the repository so the user's copy wins, `skip` leaves it,
+`fail` aborts. Adoption is never offered for machine-generated destinations
+(per-profile files, profile directories) — those back up instead, so a stale
+live copy can never overwrite a fresh render.
+
+`status` reports the plan without changing anything. `restore` copies a backup
+set back over the links — every file dotty ever displaced stays recoverable.
+
+```text
+dotty dotfiles link [--repo=<dir>] [--on-conflict=(backup|adopt|skip|fail)]
+dotty dotfiles status [--repo=<dir>]
+dotty dotfiles restore [--timestamp=<ts>]
+```
+
+# Command: Worktree
+
+Command: worktree
+
+The agent worktree lifecycle. `start [repo] [suffix]` creates (or reuses) a
+worktree for repo on an `agent/<repo>-<suffix>` branch at the configured
+worktree location and prints its path — stdout is the result, so hooks and
+scripts capture it. repo falls back to `$CLAUDE_PROJECT_DIR`, then the enclosing
+repository; suffix falls back to the WorktreeCreate hook JSON on stdin
+(`{"name": ...}`), then a UTC timestamp. `end [path]` reports uncommitted and
+unpushed work, kills the tmux session named after the worktree, removes the
+worktree, and deletes its branch — but only an `agent/*` branch, so manually
+checked-out branches survive; path falls back to the WorktreeRemove hook JSON
+(`{"worktree_path": ...}`), and an already-gone worktree exits quietly.
+
+The location comes from the active profile (`DOTTY_WORKTREES`, set by
+`dotty init --worktrees`): repo-relative by default, or one absolute shared
+root. Names are tmux-safe (dots and other disallowed characters encode to
+dashes), and the claude template wires WorktreeCreate/WorktreeRemove hooks at
+these verbs. Inside the worktrees, commit/tag signing is off via the profile's
+worktrees.gitconfig; re-sign with `dotty git resign`.
+
+```text
+dotty worktree start [repo] [suffix]
+dotty worktree end [path]
+```
+
+# Command: git (stacks + navigation)
+
+Command: git
+
+Beyond `resign`, git verbs cover **signature-preserving stacks** for fork-only
+repos that land with ff-merge:
+
+- **start / append / propose / sync** — local lineage (git config
+  `dotty.stack.*` / `dotty.branch.*`), trunk-based PRs (all base `main`,
+  cumulative diffs), PR body stack maps, merged-layer cleanup (default delete
+  local+origin), and prompt-to-rebase+resign when diverged (`sync --continue` /
+  `--abort` around conflicts).
+- **stack** — print the current stack versus trunk (not `git status`). When the
+  branch has no config lineage but local tips form an obvious chain of at least
+  three nodes (trunk + two feature branches), lineage is discovered and saved.
+- **up / down / switch** — navigate the current stack (switch is a fuzzy
+  picklist).
+- **browse** — open the upstream (else origin) forge homepage.
+
+```text
+dotty git start <branch>
+dotty git append <branch>
+dotty git stack
+dotty git propose [--all]
+dotty git sync [--continue|--abort] [--yes]
+dotty git up [num]
+dotty git down [num]
+dotty git switch
+dotty git browse
+dotty git resign …
 ```
