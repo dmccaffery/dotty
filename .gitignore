@@ -15,3 +15,6 @@ coverage/
 .claude/plans/
 .claude/*.md
 settings.local.json
+
+# toolchain bin
+.bin/
