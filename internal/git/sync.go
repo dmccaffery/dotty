@@ -20,9 +20,11 @@ type RebaseState struct {
 	StackID      string   `json:"stack_id"`
 	TrunkRemote  string   `json:"trunk_remote"`
 	TrunkBranch  string   `json:"trunk_branch"`
-	OpenBranches []string `json:"open_branches"` // bottom → tip remaining
-	Index        int      `json:"index"`         // which open branch is mid-rebase
-	Phase        string   `json:"phase"`         // "rebase" | "resign"
+	OpenBranches []string `json:"open_branches"`         // bottom → tip remaining
+	Index        int      `json:"index"`                 // which open branch is mid-rebase
+	Phase        string   `json:"phase"`                 // "rebase" | "resign"
+	OrigBranch   string   `json:"orig_branch,omitempty"` // branch to restore when the sync completes
+	Rewritten    []string `json:"rewritten,omitempty"`   // branches whose tips changed (need force-push)
 }
 
 const rebaseStateRel = "dotty/stack-rebase.json"
@@ -96,9 +98,16 @@ func ClearRebaseState(ctx context.Context, r Runner) error {
 	return nil
 }
 
-// AbortSyncRebase aborts a git rebase and clears state.
+// AbortSyncRebase aborts a git rebase, returns HEAD to the branch the sync
+// started on, and clears state.
 func AbortSyncRebase(ctx context.Context, r Runner) error {
+	st, _ := ReadRebaseState(ctx, r)
 	_ = r.Run(ctx, "git", "rebase", "--abort")
+	if st != nil && st.OrigBranch != "" {
+		if err := Checkout(ctx, r, st.OrigBranch); err != nil {
+			return err
+		}
+	}
 	return ClearRebaseState(ctx, r)
 }
 
@@ -130,4 +139,19 @@ func UpdatePRBody(ctx context.Context, r Runner, pr int, body, baseRemote string
 	}
 	return r.Run(ctx, "gh", "pr", "edit", strconv.Itoa(pr),
 		"--repo", repo, "--body", body)
+}
+
+// PRBodyText fetches the current body of a PR via gh, so callers can skip the
+// edit when nothing changed.
+func PRBodyText(ctx context.Context, r Runner, pr int, baseRemote string) (string, error) {
+	repo, err := ghRepoFromRemote(ctx, r, baseRemote)
+	if err != nil {
+		return "", err
+	}
+	out, err := r.Output(ctx, "gh", "pr", "view", strconv.Itoa(pr),
+		"--repo", repo, "--json", "body", "--jq", ".body")
+	if err != nil {
+		return "", fmt.Errorf("gh pr view #%d: %w", pr, err)
+	}
+	return string(out), nil
 }

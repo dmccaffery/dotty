@@ -21,9 +21,11 @@ If any open layer diverged from trunk — or no longer contains the layer
  open stack and re-sign each rewritten layer (use --continue / --abort
  around conflicts)
 .IP "  4." 5
-Force-with-lease push the open branches
+Force-with-lease push the rewritten branches and return to the branch
+ the sync started on
 .IP "  5." 5
-Refresh the stack visualisation on every open PR
+Refresh the stack visualisation on any open PR whose body is stale,
+ preserving descriptions edited on GitHub
 
 .PP
 Config: git config dotty.stack.cleanup false  # keep merged branches

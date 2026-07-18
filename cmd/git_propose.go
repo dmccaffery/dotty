@@ -102,10 +102,8 @@ which commit supplies the title and description.`,
 			if !ok {
 				return errors.New("stack needs a rebase; PRs must be fast-forwardable (run `dotty git sync`)")
 			}
+			// rebaseResignStack returns HEAD to cur when it finishes.
 			if err := rebaseResignStack(ctx, ios, r, s, trunk); err != nil {
-				return err
-			}
-			if err := git.Checkout(ctx, r, cur); err != nil {
 				return err
 			}
 			rows = git.Status(ctx, r, s, trunk, cur)

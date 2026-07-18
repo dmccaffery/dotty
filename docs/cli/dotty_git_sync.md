@@ -12,8 +12,10 @@ Synchronise the current stack with trunk:
      below it, because new commits landed mid-stack — prompt to rebase the
      open stack and re-sign each rewritten layer (use --continue / --abort
      around conflicts)
-  4. Force-with-lease push the open branches
-  5. Refresh the stack visualisation on every open PR
+  4. Force-with-lease push the rewritten branches and return to the branch
+     the sync started on
+  5. Refresh the stack visualisation on any open PR whose body is stale,
+     preserving descriptions edited on GitHub
 
 Config: git config dotty.stack.cleanup false  # keep merged branches
 

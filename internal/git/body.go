@@ -45,6 +45,15 @@ func RewriteStackSection(existingBody, stackID, stackMarkdown string) string {
 	return BuildPRBody(stackID, stackMarkdown, desc)
 }
 
+// EqualPRBodies reports whether two PR bodies carry the same content, ignoring
+// line-ending differences (GitHub stores CRLF) and leading/trailing whitespace.
+func EqualPRBodies(a, b string) bool {
+	norm := func(s string) string {
+		return strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
+	}
+	return norm(a) == norm(b)
+}
+
 // ExtractDescription returns the user-owned portion below the stack markers.
 func ExtractDescription(body string) string {
 	loc := reBodyBlock.FindStringIndex(body)

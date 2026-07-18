@@ -34,8 +34,10 @@ var gitSyncCmd = &cobra.Command{
      below it, because new commits landed mid-stack — prompt to rebase the
      open stack and re-sign each rewritten layer (use --continue / --abort
      around conflicts)
-  4. Force-with-lease push the open branches
-  5. Refresh the stack visualisation on every open PR
+  4. Force-with-lease push the rewritten branches and return to the branch
+     the sync started on
+  5. Refresh the stack visualisation on any open PR whose body is stale,
+     preserving descriptions edited on GitHub
 
 Config: git config dotty.stack.cleanup false  # keep merged branches`,
 	Example: `  dotty git sync
@@ -163,6 +165,9 @@ func continueStackSync(cmd *cobra.Command, ios cli.IOStreams, r *cli.ExecRunner)
 		if st.Index > 0 {
 			parent = st.OpenBranches[st.Index-1]
 		}
+		// The interrupted rebase rewrote this branch by definition — it had
+		// conflicts to resolve.
+		st.Rewritten = append(st.Rewritten, branch)
 		if err := resignRange(ctx, r, parent); err != nil {
 			return err
 		}
@@ -191,18 +196,16 @@ func continueStackSync(cmd *cobra.Command, ios cli.IOStreams, r *cli.ExecRunner)
 		}
 		// No-op rebase: nothing rewritten, signatures intact — skip the resign.
 		if after != before {
+			st.Rewritten = append(st.Rewritten, branch)
 			if err := resignRange(ctx, r, base); err != nil {
 				return err
 			}
 		}
 		st.Index++
 	}
-	for _, b := range st.OpenBranches {
-		if err := git.ForcePushBranch(ctx, r, b); err != nil {
-			return err
-		}
+	if err := finishStackRebase(ctx, ios, r, *st); err != nil {
+		return err
 	}
-	_ = git.ClearRebaseState(ctx, r)
 	s, err := git.LoadStackForHEAD(ctx, r)
 	if err != nil {
 		return err
@@ -231,6 +234,7 @@ func rebaseResignStack(ctx context.Context, ios cli.IOStreams, r *cli.ExecRunner
 		OpenBranches: open,
 		Index:        0,
 		Phase:        "rebase",
+		OrigBranch:   cur,
 	}
 	if err := git.WriteRebaseState(ctx, r, st); err != nil {
 		return err
@@ -261,14 +265,26 @@ func rebaseResignStack(ctx context.Context, ios cli.IOStreams, r *cli.ExecRunner
 		if after == before {
 			continue
 		}
+		st.Rewritten = append(st.Rewritten, branch)
 		tui.Infof(ios, "Re-signing %s", branch)
 		if err := resignRange(ctx, r, base); err != nil {
 			return err
 		}
 	}
-	for _, b := range open {
+	return finishStackRebase(ctx, ios, r, st)
+}
+
+// finishStackRebase force-pushes the branches a stack rebase rewrote, returns
+// HEAD to the branch the sync started on, and clears the persisted state.
+func finishStackRebase(ctx context.Context, ios cli.IOStreams, r *cli.ExecRunner, st git.RebaseState) error {
+	for _, b := range st.Rewritten {
 		tui.Infof(ios, "Pushing %s", b)
 		if err := git.ForcePushBranch(ctx, r, b); err != nil {
+			return err
+		}
+	}
+	if st.OrigBranch != "" {
+		if err := git.Checkout(ctx, r, st.OrigBranch); err != nil {
 			return err
 		}
 	}
@@ -304,20 +320,30 @@ func refreshOpenPRBodies(ctx context.Context, ios cli.IOStreams, r *cli.ExecRunn
 			continue
 		}
 		stackMD := git.FormatStackMap(s, layer.Branch, prURL, merged)
-		desc := ""
-		// Prefer preserving existing description from GitHub if we can — for now rebuild from title commit.
-		if layer.TitleSHA != "" {
-			parent := git.ParentRevForLayer(s, i, trunk)
-			if commits, err := git.LayerCommits(ctx, r, parent, layer.Branch); err == nil {
-				// Tolerate an abbreviated stored TitleSHA.
-				if j := slices.IndexFunc(commits, func(c git.Commit) bool {
-					return strings.HasPrefix(c.SHA, layer.TitleSHA)
-				}); j >= 0 {
-					desc = commits[j].Body
+		var body string
+		if existing, err := git.PRBodyText(ctx, r, layer.PR, baseRemote); err == nil {
+			// Rewrite only the stack block, preserving any description edits
+			// made on GitHub — and skip the edit entirely when it is current.
+			body = git.RewriteStackSection(existing, s.ID, stackMD)
+			if git.EqualPRBodies(existing, body) {
+				continue
+			}
+		} else {
+			// Current body unreadable — rebuild it from the title commit.
+			desc := ""
+			if layer.TitleSHA != "" {
+				parent := git.ParentRevForLayer(s, i, trunk)
+				if commits, err := git.LayerCommits(ctx, r, parent, layer.Branch); err == nil {
+					// Tolerate an abbreviated stored TitleSHA.
+					if j := slices.IndexFunc(commits, func(c git.Commit) bool {
+						return strings.HasPrefix(c.SHA, layer.TitleSHA)
+					}); j >= 0 {
+						desc = commits[j].Body
+					}
 				}
 			}
+			body = git.BuildPRBody(s.ID, stackMD, desc)
 		}
-		body := git.BuildPRBody(s.ID, stackMD, desc)
 		if err := git.UpdatePRBody(ctx, r, layer.PR, body, baseRemote); err != nil {
 			tui.Warnf(ios, "Refresh PR#%d: %v", layer.PR, err)
 			continue
