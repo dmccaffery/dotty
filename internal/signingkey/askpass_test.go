@@ -43,6 +43,13 @@ func TestBuildAssuan(t *testing.T) {
 			prompt: "Enter your PIN",
 			want:   "SETDESC Enter your PIN\nGETPIN\n",
 		},
+		{
+			// A multi-line prompt must not terminate SETDESC early — Assuan
+			// treats a raw newline as the end of the command.
+			name:   "prompt newlines and percents are Assuan-escaped",
+			prompt: "line one\nline two 100%",
+			want:   "SETDESC line one%0Aline two 100%25\nGETPIN\n",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -144,18 +151,25 @@ type fakeAssuan struct {
 	gotStdin string
 	called   bool
 	reply    string
+	err      error
 }
 
 func (f *fakeAssuan) RunAssuan(_ context.Context, stdin, _ string, _ ...string) (string, error) {
 	f.called = true
 	f.gotStdin = stdin
-	return f.reply, nil
+	return f.reply, f.err
 }
+
+// hostAuthPrompt is the multi-line echo prompt ssh emits for an unknown host
+// key; it carries no $SSH_ASKPASS_PROMPT hint.
+const hostAuthPrompt = "The authenticity of host 'h (10.0.0.1)' can't be established.\n" +
+	"ED25519 key fingerprint is SHA256:abc.\n" +
+	"Are you sure you want to continue connecting (yes/no/[fingerprint])?"
 
 func TestAskPassReply(t *testing.T) {
 	t.Run("user-presence prompt never invokes pinentry", func(t *testing.T) {
 		f := &fakeAssuan{reply: "D 9999\n"}
-		got := AskPassReply(context.Background(), f, "Confirm user presence for key ED25519-SK ...", "", readFixture)
+		got := AskPassReply(context.Background(), f, "Confirm user presence for key ED25519-SK ...", "", "", readFixture)
 		if got != "" {
 			t.Errorf("reply = %q, want empty", got)
 		}
@@ -164,9 +178,20 @@ func TestAskPassReply(t *testing.T) {
 		}
 	})
 
+	t.Run("display-only hint never invokes pinentry", func(t *testing.T) {
+		f := &fakeAssuan{reply: "D 9999\n"}
+		got := AskPassReply(context.Background(), f, "Touch your security key", "none", "", readFixture)
+		if got != "" {
+			t.Errorf("reply = %q, want empty", got)
+		}
+		if f.called {
+			t.Error("display-only path invoked pinentry")
+		}
+	})
+
 	t.Run("PIN prompt forwards keyinfo and returns the entered PIN", func(t *testing.T) {
 		f := &fakeAssuan{reply: "OK\nD 4242\nOK\n"}
-		got := AskPassReply(context.Background(), f, "Enter PIN for ED25519-SK key: ", "fp123", readFixture)
+		got := AskPassReply(context.Background(), f, "Enter PIN for ED25519-SK key: ", "", "fp123", readFixture)
 		if got != "4242" {
 			t.Errorf("reply = %q, want 4242", got)
 		}
@@ -182,7 +207,7 @@ func TestAskPassReply(t *testing.T) {
 	t.Run("client-auth prompt caches against the named key's fingerprint", func(t *testing.T) {
 		f := &fakeAssuan{reply: "OK\nD 4242\nOK\n"}
 		prompt := "Enter PIN for ED25519-SK key /home/u/.ssh/id_sk_current: "
-		got := AskPassReply(context.Background(), f, prompt, "", readFixture)
+		got := AskPassReply(context.Background(), f, prompt, "", "", readFixture)
 		if got != "4242" {
 			t.Errorf("reply = %q, want 4242", got)
 		}
@@ -191,6 +216,46 @@ func TestAskPassReply(t *testing.T) {
 			"SETKEYINFO s/" + helloFP + "\n" +
 			"GETPIN\n"
 		if f.gotStdin != want {
+			t.Errorf("assuan stdin =\n%q\nwant\n%q", f.gotStdin, want)
+		}
+	})
+
+	t.Run("host-authenticity prompt becomes a CONFIRM, not a GETPIN", func(t *testing.T) {
+		f := &fakeAssuan{reply: "OK Pleased to meet you\nOK\nOK\n"}
+		got := AskPassReply(context.Background(), f, hostAuthPrompt, "", "", readFixture)
+		if got != "yes" {
+			t.Errorf("reply = %q, want yes", got)
+		}
+		want := "SETDESC The authenticity of host 'h (10.0.0.1)' can't be established.%0A" +
+			"ED25519 key fingerprint is SHA256:abc.%0A" +
+			"Are you sure you want to continue connecting (yes/no/[fingerprint])?\n" +
+			"CONFIRM\n"
+		if f.gotStdin != want {
+			t.Errorf("assuan stdin =\n%q\nwant\n%q", f.gotStdin, want)
+		}
+	})
+
+	t.Run("cancelled confirmation answers no", func(t *testing.T) {
+		f := &fakeAssuan{reply: "OK Pleased to meet you\nOK\nERR 83886179 Operation cancelled\n"}
+		if got := AskPassReply(context.Background(), f, hostAuthPrompt, "", "", readFixture); got != "no" {
+			t.Errorf("reply = %q, want no", got)
+		}
+	})
+
+	t.Run("pinentry failure answers no", func(t *testing.T) {
+		f := &fakeAssuan{err: fs.ErrNotExist}
+		if got := AskPassReply(context.Background(), f, hostAuthPrompt, "", "", readFixture); got != "no" {
+			t.Errorf("reply = %q, want no", got)
+		}
+	})
+
+	t.Run("confirm hint overrides secret handling", func(t *testing.T) {
+		f := &fakeAssuan{reply: "OK\nOK\nOK\n"}
+		got := AskPassReply(context.Background(), f, "Allow use of key foo?", "confirm", "", readFixture)
+		if got != "yes" {
+			t.Errorf("reply = %q, want yes", got)
+		}
+		if want := "SETDESC Allow use of key foo?\nCONFIRM\n"; f.gotStdin != want {
 			t.Errorf("assuan stdin =\n%q\nwant\n%q", f.gotStdin, want)
 		}
 	})

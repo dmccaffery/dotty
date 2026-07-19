@@ -34,10 +34,12 @@ if [ "${TERM_PROGRAM}" = "vscode" ]; then
 	export EDITOR='code --wait'
 fi
 
-# Route OpenSSH PIN prompts through dotty's ask-pass bridge → pinentry-mac,
-# which caches the security-key PIN in the macOS keychain (shared by git
-# signing and ssh auth with an sk identity file). Guarded on the symlink so
-# a shell never breaks before `dotty init` has created it.
+# Route OpenSSH prompts through dotty's ask-pass bridge → pinentry-mac. The
+# force setting sends every prompt there, so the bridge dispatches by kind:
+# PIN entries get a cached-in-keychain GETPIN (shared by git signing and ssh
+# auth with an sk identity file), yes/no questions like the host-authenticity
+# check get a CONFIRM dialog. Guarded on the symlink so a shell never breaks
+# before `dotty init` has created it.
 if [ -e "${XDG_DATA_HOME}/dotty/dotty-ssh-askpass" ]; then
 	export SSH_ASKPASS="${XDG_DATA_HOME}/dotty/dotty-ssh-askpass"
 	export SSH_ASKPASS_REQUIRE=force
