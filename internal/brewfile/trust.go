@@ -11,10 +11,17 @@ import (
 	"strings"
 )
 
-// NeedsTrust reports whether a brew name is tap-qualified deeply enough to be
-// subject to Homebrew's tap-trust gate: more than one forward slash, e.g.
+// NeedsTrust reports whether adding name as kind is subject to Homebrew's
+// tap-trust gate. Official homebrew/* names never need trust; taps need it as
+// a whole (owner/repo); formulae and casks only when tap-qualified, e.g.
 // "anomalyco/tap/opencode".
-func NeedsTrust(name string) bool {
+func NeedsTrust(kind Kind, name string) bool {
+	if !kind.Trustable() || strings.HasPrefix(strings.ToLower(name), "homebrew/") {
+		return false
+	}
+	if kind == KindTap {
+		return strings.Count(name, "/") == 1
+	}
 	return strings.Count(name, "/") > 1
 }
 
@@ -47,6 +54,7 @@ func IsTrusted(ctx context.Context, r Runner, kind Kind, name string) (bool, err
 	if err != nil {
 		return false, err
 	}
+	name = trustStoreName(name) // the store holds normalised names
 	switch kind {
 	case KindFormula:
 		return slices.Contains(t.Formulae, name), nil

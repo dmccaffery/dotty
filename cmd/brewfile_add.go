@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -35,9 +36,13 @@ var brewfileAddCmd = &cobra.Command{
 	Use:   "add [--tap | --cask | --formula | ...] <name> [...]",
 	Short: "Add brews to the Brewfile and install them.",
 	Long: `Add one or more entries to the Brewfile, then install the bundle. Entries
-default to formulae; pass a type flag for anything else. Tap-qualified names
-(more than one slash) of formulae, casks, and taps go through Homebrew's
-trust gate first — dotty asks before trusting anything new.`,
+default to formulae; pass a type flag for anything else. Entries the Brewfile
+already lists (per brew's own parser) are skipped rather than duplicated —
+the bundle is still installed. Tap-qualified names (more than one slash) of
+formulae and casks, and taps themselves, go through Homebrew's trust gate
+first: dotty asks before trusting anything new and records "trusted: true" on
+the new Brewfile entry, so the trust survives the trust-store reset that
+` + "`dotty brewfile sync`" + ` performs.`,
 	Example: `  dotty brewfile add ripgrep jq
   dotty brewfile add --cask ghostty
   dotty brewfile add --tap fluxcd/tap
@@ -63,10 +68,25 @@ trust gate first — dotty asks before trusting anything new.`,
 			}
 			return ok, err
 		}
-		if err := brewfile.Add(cmd.Context(), newRunner(ios), path, kind, args, confirmTrust); err != nil {
+		res, err := brewfile.Add(cmd.Context(), newRunner(ios), path, kind, args, confirmTrust)
+		if err != nil {
 			return err
 		}
-		tui.Successf(ios, "Added %d %s entr%s to %s", len(args), kind, plural(len(args), "y", "ies"), path)
+		for _, name := range res.Skipped {
+			tui.Infof(ios, "%s %q is already in the Brewfile; skipped", kind, name)
+		}
+		if len(res.Unmarked) > 0 {
+			tui.Warnf(ios, "could not mark %s as trusted in %s; add `, trusted: true` to the entr%s by hand "+
+				"or `dotty brewfile sync` will revoke the trust",
+				strings.Join(res.Unmarked, ", "), path, plural(len(res.Unmarked), "y", "ies"))
+		}
+		added := len(args) - len(res.Skipped)
+		if added == 0 {
+			tui.Successf(ios, "Brewfile already lists all %d entr%s; installed the bundle at %s",
+				len(args), plural(len(args), "y", "ies"), path)
+		} else {
+			tui.Successf(ios, "Added %d %s entr%s to %s", added, kind, plural(added, "y", "ies"), path)
+		}
 		return nil
 	},
 }

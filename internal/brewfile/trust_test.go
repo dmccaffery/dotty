@@ -10,18 +10,27 @@ import (
 
 func TestNeedsTrust(t *testing.T) {
 	tests := []struct {
+		kind Kind
 		name string
 		want bool
 	}{
-		{name: "jq", want: false},
-		{name: "fluxcd/tap", want: false}, // one slash: a plain tap name
-		{name: "acme/tap/widget", want: true},
-		{name: "a/b/c/d", want: true},
-		{name: "", want: false},
+		{kind: KindFormula, name: "jq", want: false},
+		{kind: KindFormula, name: "fluxcd/tap", want: false}, // one slash: a plain tap name
+		{kind: KindFormula, name: "acme/tap/widget", want: true},
+		{kind: KindFormula, name: "a/b/c/d", want: true},
+		{kind: KindFormula, name: "homebrew/homebrew/jq", want: false}, // official, always trusted
+		{kind: KindFormula, name: "", want: false},
+		{kind: KindCask, name: "ghostty", want: false},
+		{kind: KindCask, name: "acme/tap/widget", want: true},
+		{kind: KindTap, name: "fluxcd/tap", want: true},
+		{kind: KindTap, name: "Homebrew/services", want: false}, // official, always trusted
+		{kind: KindTap, name: "acme/tap/widget", want: false},   // not a tap name
+		{kind: KindTap, name: "jq", want: false},
+		{kind: KindNPM, name: "a/b/c", want: false}, // not trustable at all
 	}
 	for _, tt := range tests {
-		if got := NeedsTrust(tt.name); got != tt.want {
-			t.Errorf("NeedsTrust(%q) = %v, want %v", tt.name, got, tt.want)
+		if got := NeedsTrust(tt.kind, tt.name); got != tt.want {
+			t.Errorf("NeedsTrust(%s, %q) = %v, want %v", tt.kind, tt.name, got, tt.want)
 		}
 	}
 }
@@ -42,6 +51,8 @@ func TestIsTrusted(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "trusted formula", kind: KindFormula, target: "anomalyco/tap/opencode", want: true},
+		{name: "unnormalised spelling of a trusted formula", kind: KindFormula,
+			target: "Anomalyco/homebrew-tap/OpenCode", want: true},
 		{name: "untrusted formula", kind: KindFormula, target: "acme/tap/widget", want: false},
 		{name: "trusted cask", kind: KindCask, target: "terraform-linters/tap/tflint", want: true},
 		{name: "trusted tap", kind: KindTap, target: "fluxcd/tap", want: true},

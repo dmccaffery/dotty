@@ -5,7 +5,10 @@ package brewfile
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"strings"
 )
 
@@ -41,41 +44,97 @@ func (k Kind) Trustable() bool {
 
 func (k Kind) flag() string { return "--" + string(k) }
 
-// Add records names in the Brewfile and installs the bundle. Tap-qualified
-// names of trustable kinds go through the `brew trust` flow first: when one
-// is untrusted, confirmTrust decides whether to trust it; declining aborts
-// before anything is written.
+// AddResult reports what Add did beyond adding and installing: names already
+// recorded in the Brewfile were skipped rather than duplicated, and names
+// whose freshly added entry line could not be rewritten with `trusted: true`
+// need the attribute added by hand.
+type AddResult struct {
+	Skipped  []string
+	Unmarked []string
+}
+
+// Add records names in the Brewfile and installs the bundle. Names brew's own
+// parser already reports for the kind are skipped — `brew bundle add` appends
+// blindly. Trust-gated names (see NeedsTrust) go through the `brew trust`
+// flow first: when one is untrusted, confirmTrust decides whether to trust
+// it; declining aborts before anything is written. Newly added trust-gated
+// entries are then marked `trusted: true` in the Brewfile itself, because
+// `brew bundle install --force-cleanup` (used by Sync) resets Homebrew's
+// trust store to exactly what the Brewfile declares. Install always runs,
+// even when every name was skipped — it converges a machine where an entry is
+// recorded but not installed.
 func Add(ctx context.Context, r Runner, path string, kind Kind, names []string,
 	confirmTrust func(name string) (bool, error),
-) error {
+) (AddResult, error) {
+	var res AddResult
+	present, err := listEntries(ctx, r, path, kind)
+	if err != nil {
+		return res, err
+	}
+	var toAdd []string
 	for _, name := range names {
-		if !NeedsTrust(name) || !kind.Trustable() {
+		canonical := canonicalName(kind, name)
+		if present[canonical] {
+			res.Skipped = append(res.Skipped, name)
 			continue
 		}
-		trusted, err := IsTrusted(ctx, r, kind, name)
-		if err != nil {
-			return err
-		}
-		if trusted {
-			continue
-		}
-		ok, err := confirmTrust(name)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return fmt.Errorf("%s %q is not trusted (declined)", kind, name)
-		}
-		if err := Trust(ctx, r, kind, name); err != nil {
-			return err
-		}
+		present[canonical] = true // also dedupes repeats within one invocation
+		toAdd = append(toAdd, name)
 	}
 
-	addArgs := append([]string{"bundle", "add", "--file=" + path, kind.flag()}, names...)
-	if err := r.Run(ctx, "brew", addArgs...); err != nil {
-		return err
+	if len(toAdd) > 0 {
+		var trustNames []string
+		for _, name := range toAdd {
+			if !NeedsTrust(kind, name) {
+				continue
+			}
+			trustNames = append(trustNames, name)
+			trusted, err := IsTrusted(ctx, r, kind, name)
+			if err != nil {
+				return res, err
+			}
+			if trusted {
+				continue
+			}
+			ok, err := confirmTrust(name)
+			if err != nil {
+				return res, err
+			}
+			if !ok {
+				return res, fmt.Errorf("%s %q is not trusted (declined)", kind, name)
+			}
+			if err := Trust(ctx, r, kind, name); err != nil {
+				return res, err
+			}
+		}
+
+		addArgs := append([]string{"bundle", "add", "--file=" + path, kind.flag()}, toAdd...)
+		if err := r.Run(ctx, "brew", addArgs...); err != nil {
+			return res, err
+		}
+		if res.Unmarked, err = markTrusted(path, kind, trustNames); err != nil {
+			return res, err
+		}
 	}
-	return r.Run(ctx, "brew", "bundle", "install", "--file="+path)
+	return res, r.Run(ctx, "brew", "bundle", "install", "--file="+path)
+}
+
+// listEntries returns the canonical names of kind already recorded at path,
+// parsed by brew itself. A missing Brewfile is an empty set — `brew bundle
+// add` creates it.
+func listEntries(ctx context.Context, r Runner, path string, kind Kind) (map[string]bool, error) {
+	present := make(map[string]bool)
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return present, nil
+	}
+	out, err := r.Output(ctx, "brew", "bundle", "list", "--file="+path, kind.flag())
+	if err != nil {
+		return nil, fmt.Errorf("list %s entries in %s: %w", kind, path, err)
+	}
+	for _, line := range nonEmptyLines(out) {
+		present[canonicalName(kind, line)] = true
+	}
+	return present, nil
 }
 
 // Upgrade installs and upgrades everything in the Brewfile without removing

@@ -27,13 +27,23 @@ dotty brewfile add bitwise-media-group/tap/dotty
 ```
 
 [`dotty brewfile add`](../cli/dotty_brewfile_add.md) installs the package _and_
-records it in the profile's Brewfile in one step.
+records it in the profile's Brewfile in one step. Entries the Brewfile already
+lists are detected with brew's own parser (`brew bundle list`) and skipped
+rather than duplicated — `brew bundle add` alone would append a second copy —
+and the bundle is still installed so the machine converges. Note that casks
+compare by their short token (brew's semantics), so `acme/tap/widget` counts as
+present when a bare `cask "widget"` entry exists.
 
 !!! note "Tapped names and `brew trust`"
 
     Homebrew v6 refuses to install from an untrusted third-party tap. For
-    tapped names, dotty checks trust first (`brew trust --json`) and walks
-    you through granting it, so `brewfile add` doesn't fail halfway.
+    tapped names (and third-party taps themselves), dotty checks trust first
+    (`brew trust --json`) and walks you through granting it, so `brewfile add`
+    doesn't fail halfway. It also records `trusted: true` on the new Brewfile
+    entry: [`dotty brewfile sync`](../cli/dotty_brewfile_sync.md) runs
+    `brew bundle install --force-cleanup`, which resets Homebrew's trust store
+    to exactly what the Brewfile declares — a grant that lives only in the
+    store would be revoked on the next sync.
 
 ## Snapshotting a machine
 

@@ -11,9 +11,13 @@ dotty-brewfile-add - Add brews to the Brewfile and install them.
 
 .SH DESCRIPTION
 Add one or more entries to the Brewfile, then install the bundle. Entries
-default to formulae; pass a type flag for anything else. Tap-qualified names
-(more than one slash) of formulae, casks, and taps go through Homebrew's
-trust gate first — dotty asks before trusting anything new.
+default to formulae; pass a type flag for anything else. Entries the Brewfile
+already lists (per brew's own parser) are skipped rather than duplicated —
+the bundle is still installed. Tap-qualified names (more than one slash) of
+formulae and casks, and taps themselves, go through Homebrew's trust gate
+first: dotty asks before trusting anything new and records "trusted: true" on
+the new Brewfile entry, so the trust survives the trust-store reset that
+\fBdotty brewfile sync\fR performs.
 
 
 .SH OPTIONS
