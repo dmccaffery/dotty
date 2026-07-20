@@ -59,6 +59,8 @@ func newConfigTestCmd(t *testing.T) *cobra.Command {
 	cmd := &cobra.Command{Use: "propose"}
 	cmd.Flags().Bool("browse", false, "")
 	cmd.Flags().Bool("copy", false, "")
+	var am autoMergeMode
+	cmd.Flags().Var(&am, "auto-merge", "")
 	cmd.Flags().String("remote", "origin", "")
 	cmd.Flags().Int("up", 1, "")
 	cmd.Flags().Bool("root", false, "")
@@ -144,6 +146,29 @@ func TestApplyGitConfigFlagDefaults(t *testing.T) {
 					}
 				}
 			},
+		},
+		{
+			name:   "custom-value flag reads config through its own vocabulary",
+			config: map[string]string{"dotty.propose.auto-merge": "comment"},
+			check: func(t *testing.T, cmd *cobra.Command, _ *fakeGitConfig) {
+				if got := cmd.Flags().Lookup("auto-merge").Value.String(); got != string(autoMergeComment) {
+					t.Errorf("auto-merge = %q, want %q", got, autoMergeComment)
+				}
+			},
+		},
+		{
+			name:   "custom-value flag reads a merge method from config",
+			config: map[string]string{"dotty.propose.auto-merge": "rebase"},
+			check: func(t *testing.T, cmd *cobra.Command, _ *fakeGitConfig) {
+				if got := cmd.Flags().Lookup("auto-merge").Value.String(); got != "rebase" {
+					t.Errorf("auto-merge = %q, want %q", got, "rebase")
+				}
+			},
+		},
+		{
+			name:       "invalid auto-merge mode errors with the key",
+			config:     map[string]string{"dotty.propose.auto-merge": "banana"},
+			wantErrSub: "dotty.propose.auto-merge",
 		},
 		{
 			name:       "unparseable value errors with the key",

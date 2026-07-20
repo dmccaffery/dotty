@@ -18,13 +18,50 @@ import (
 )
 
 var gitProposeFlags struct {
-	All    bool
-	Browse bool
-	Copy   bool
+	All       bool
+	AutoMerge autoMergeMode
+	Browse    bool
+	Copy      bool
+}
+
+// autoMergeMode is the --auto-merge value: a GitHub merge method ("merge",
+// "rebase", "squash") for the native auto-merge feature, or "comment" for
+// repositories where a merge bot watches for /auto-merge comments instead.
+// The zero value means auto-merge was not requested. It implements
+// pflag.Value; git-config defaults (dotty.propose.auto-merge) reach Set as
+// the raw stored string, so Set is the single validation point.
+type autoMergeMode string
+
+const (
+	autoMergeOff     autoMergeMode = ""
+	autoMergeComment autoMergeMode = "comment"
+)
+
+// mergeMethod returns the gh merge method to enable, or "" when auto-merge is
+// off or requested via comment.
+func (m autoMergeMode) mergeMethod() string {
+	if m == autoMergeOff || m == autoMergeComment {
+		return ""
+	}
+	return string(m)
+}
+
+func (m *autoMergeMode) String() string { return string(*m) }
+
+func (m *autoMergeMode) Type() string { return "mode" }
+
+func (m *autoMergeMode) Set(v string) error {
+	switch v := strings.ToLower(v); v {
+	case "merge", "rebase", "squash", "comment":
+		*m = autoMergeMode(v)
+	default:
+		return fmt.Errorf("invalid auto-merge mode %q: must be merge, rebase, squash, or comment", v)
+	}
+	return nil
 }
 
 var gitProposeCmd = &cobra.Command{
-	Use:   "propose [--all] [--browse] [--copy]",
+	Use:   "propose [--all] [--auto-merge=merge|rebase|squash|comment] [--browse] [--copy]",
 	Short: "Open or update trunk-based PRs for the stack.",
 	Long: `Push stack branches and open pull requests against upstream/main
 (or origin/main). Default: layers from the trunk through the current branch.
@@ -40,12 +77,20 @@ rebase + resign, as ` + "`dotty git sync`" + ` does.
 Each PR body includes a stack map with links. For multi-commit layers you pick
 which commit supplies the title and description.
 
+With --auto-merge=<merge|rebase|squash>, each proposed PR is flagged to merge
+automatically with that method once its requirements pass. If the repository
+has auto-merge switched off, or disallows the chosen method, propose warns and
+continues. --auto-merge=comment instead posts a ` + "`/auto-merge`" + ` comment
+on each PR, for repositories where a merge bot watches for it.
+
 With --browse, each proposed PR opens in your browser afterwards; with --copy,
-the PR URLs (one per line) land on your clipboard. Make either the default via
-git configuration: ` + "`git config set dotty.propose.browse true`" + ` (and
-dotty.propose.copy).`,
+the PR URLs (one per line) land on your clipboard. Make any of these the
+default via git configuration: ` + "`git config set dotty.propose.browse true`" + `
+(and dotty.propose.copy, dotty.propose.auto-merge).`,
 	Example: `  dotty git propose
   dotty git propose --all
+  dotty git propose --auto-merge=rebase
+  dotty git propose --auto-merge=comment
   dotty git propose --browse --copy`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -80,6 +125,22 @@ dotty.propose.copy).`,
 			return err
 		}
 		prURL := git.PRURLBuilder(ctx, r, baseRemote)
+
+		// Auto-merge support is repo-wide, so validate the chosen method once;
+		// a repo that cannot honor it degrades to a warning, not a failure.
+		autoMerge := gitProposeFlags.AutoMerge
+		if method := autoMerge.mergeMethod(); method != "" {
+			err := git.CheckAutoMerge(ctx, r, baseRemote, method)
+			switch {
+			case errors.Is(err, git.ErrAutoMergeUnavailable):
+				tui.Warnf(ios, "Auto-merge is not enabled for this repository; "+
+					"enable it in the repository settings or use --auto-merge=comment")
+				autoMerge = autoMergeOff
+			case err != nil:
+				tui.Warnf(ios, "Auto-merge unavailable: %v", err)
+				autoMerge = autoMergeOff
+			}
+		}
 
 		for i := range s.Layers {
 			if s.Layers[i].TitleHint == "" {
@@ -174,6 +235,25 @@ dotty.propose.copy).`,
 			}
 			layer.PR = n
 			tui.Successf(ios, "Proposed %s → PR#%d (%s)", layer.Branch, n, title)
+
+			if autoMerge == autoMergeComment {
+				added, err := git.AddAutoMergeComment(ctx, r, baseRemote, n)
+				switch {
+				case err != nil:
+					tui.Warnf(ios, "Could not comment /auto-merge on PR#%d: %v", n, err)
+				case added:
+					tui.Infof(ios, "Requested auto-merge on PR#%d via /auto-merge comment", n)
+				}
+			} else if method := autoMerge.mergeMethod(); method != "" {
+				already, err := git.EnableAutoMerge(ctx, r, baseRemote, n, method)
+				switch {
+				case err != nil:
+					tui.Warnf(ios, "Could not set PR#%d to auto-merge: %v", n, err)
+				case !already:
+					tui.Infof(ios, "PR#%d will auto-merge (%s) once requirements pass", n, method)
+				}
+			}
+
 			if u := prURL(n); u != "" {
 				proposedURLs = append(proposedURLs, u)
 			}
@@ -239,6 +319,9 @@ func adoptCurrentBranch(ctx context.Context, ios cli.IOStreams, r *cli.ExecRunne
 func init() {
 	gitProposeCmd.Flags().BoolVar(&gitProposeFlags.All, "all", false,
 		"propose every layer in the stack, not only through the current branch")
+	gitProposeCmd.Flags().Var(&gitProposeFlags.AutoMerge, "auto-merge",
+		"auto-merge each proposed pull request with the given method (merge, rebase, or squash); "+
+			"mode comment posts a /auto-merge comment for a merge bot instead")
 	gitProposeCmd.Flags().BoolVar(&gitProposeFlags.Browse, "browse", false,
 		"open each proposed pull request in the browser")
 	gitProposeCmd.Flags().BoolVar(&gitProposeFlags.Copy, "copy", false,

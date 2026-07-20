@@ -5,10 +5,17 @@ package git
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 )
+
+// ErrAutoMergeUnavailable reports that GitHub's auto-merge feature is switched
+// off in the base repository's settings, so PRs cannot be flagged to merge
+// automatically.
+var ErrAutoMergeUnavailable = errors.New("auto-merge is not enabled for this repository")
 
 // ResolveProposeScope computes the inclusive top layer index to propose
 // (0-based): the tip with all, otherwise the current branch's layer.
@@ -86,6 +93,96 @@ func CreateOrUpdatePR(ctx context.Context, r Runner, branch string, existingPR i
 		return 0, fmt.Errorf("gh pr create: %w", err)
 	}
 	return parsePRNumber(string(out))
+}
+
+// CheckAutoMerge verifies the base repository can honor an auto-merge with
+// the given method ("merge", "rebase", or "squash"): ErrAutoMergeUnavailable
+// when the repository has auto-merge switched off, and a descriptive error
+// when the repository's settings disallow the method itself.
+func CheckAutoMerge(ctx context.Context, r Runner, baseRemote, method string) error {
+	repo, err := ghRepoFromRemote(ctx, r, baseRemote)
+	if err != nil {
+		return err
+	}
+	out, err := r.Output(ctx, "gh", "repo", "view", repo, "--json",
+		"autoMergeAllowed,rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed")
+	if err != nil {
+		return fmt.Errorf("gh repo view %s: %w", repo, err)
+	}
+	var allowed struct {
+		AutoMerge   bool `json:"autoMergeAllowed"`
+		RebaseMerge bool `json:"rebaseMergeAllowed"`
+		SquashMerge bool `json:"squashMergeAllowed"`
+		MergeCommit bool `json:"mergeCommitAllowed"`
+	}
+	if err := json.Unmarshal(out, &allowed); err != nil {
+		return fmt.Errorf("parse gh repo view %s: %w", repo, err)
+	}
+	if !allowed.AutoMerge {
+		return ErrAutoMergeUnavailable
+	}
+	methodAllowed := map[string]bool{
+		"merge":  allowed.MergeCommit,
+		"rebase": allowed.RebaseMerge,
+		"squash": allowed.SquashMerge,
+	}
+	if !methodAllowed[method] {
+		return fmt.Errorf("repository %s does not allow %s merges", repo, method)
+	}
+	return nil
+}
+
+// EnableAutoMerge flags PR pr to merge automatically with the given method
+// (validated by CheckAutoMerge) once its requirements pass. Proposing is
+// re-runnable, so enabling is idempotent: a PR whose auto-merge request is
+// already pending reports already = true and is left untouched.
+func EnableAutoMerge(ctx context.Context, r Runner, baseRemote string, pr int,
+	method string) (already bool, err error) {
+	repo, err := ghRepoFromRemote(ctx, r, baseRemote)
+	if err != nil {
+		return false, err
+	}
+	// A failed probe is not fatal — enabling below reports the real problem.
+	out, err := r.Output(ctx, "gh", "pr", "view", strconv.Itoa(pr),
+		"--repo", repo, "--json", "autoMergeRequest", "--jq", ".autoMergeRequest")
+	if pending := strings.TrimSpace(string(out)); err == nil && pending != "" && pending != "null" {
+		return true, nil
+	}
+	if _, err := r.Output(ctx, "gh", "pr", "merge", strconv.Itoa(pr),
+		"--repo", repo, "--auto", "--"+method); err != nil {
+		return false, fmt.Errorf("gh pr merge --auto #%d: %w", pr, err)
+	}
+	return false, nil
+}
+
+// autoMergeCommentBody is the comment convention merge bots watch for in
+// repositories that gate merges themselves instead of using GitHub auto-merge.
+const autoMergeCommentBody = "/auto-merge"
+
+// AddAutoMergeComment posts a /auto-merge comment on PR pr for a merge bot to
+// act on. Proposing is re-runnable and repeated comments would re-trigger the
+// bot, so a PR that already carries the comment is left untouched
+// (added = false).
+func AddAutoMergeComment(ctx context.Context, r Runner, baseRemote string, pr int) (added bool, err error) {
+	repo, err := ghRepoFromRemote(ctx, r, baseRemote)
+	if err != nil {
+		return false, err
+	}
+	// A failed probe is not fatal — worst case the comment posts again.
+	out, err := r.Output(ctx, "gh", "pr", "view", strconv.Itoa(pr),
+		"--repo", repo, "--json", "comments", "--jq", ".comments[].body")
+	if err == nil {
+		for line := range strings.Lines(string(out)) {
+			if strings.TrimSpace(line) == autoMergeCommentBody {
+				return false, nil
+			}
+		}
+	}
+	if _, err := r.Output(ctx, "gh", "pr", "comment", strconv.Itoa(pr),
+		"--repo", repo, "--body", autoMergeCommentBody); err != nil {
+		return false, fmt.Errorf("gh pr comment #%d: %w", pr, err)
+	}
+	return true, nil
 }
 
 func ghRepoFromRemote(ctx context.Context, r Runner, remote string) (string, error) {

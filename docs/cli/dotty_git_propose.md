@@ -18,13 +18,19 @@ rebase + resign, as `dotty git sync` does.
 Each PR body includes a stack map with links. For multi-commit layers you pick
 which commit supplies the title and description.
 
+With --auto-merge=<merge|rebase|squash>, each proposed PR is flagged to merge
+automatically with that method once its requirements pass. If the repository
+has auto-merge switched off, or disallows the chosen method, propose warns and
+continues. --auto-merge=comment instead posts a `/auto-merge` comment
+on each PR, for repositories where a merge bot watches for it.
+
 With --browse, each proposed PR opens in your browser afterwards; with --copy,
-the PR URLs (one per line) land on your clipboard. Make either the default via
-git configuration: `git config set dotty.propose.browse true` (and
-dotty.propose.copy).
+the PR URLs (one per line) land on your clipboard. Make any of these the
+default via git configuration: `git config set dotty.propose.browse true`
+(and dotty.propose.copy, dotty.propose.auto-merge).
 
 ```
-dotty git propose [--all] [--browse] [--copy] [flags]
+dotty git propose [--all] [--auto-merge=merge|rebase|squash|comment] [--browse] [--copy] [flags]
 ```
 
 ### Examples
@@ -32,16 +38,19 @@ dotty git propose [--all] [--browse] [--copy] [flags]
 ```
   dotty git propose
   dotty git propose --all
+  dotty git propose --auto-merge=rebase
+  dotty git propose --auto-merge=comment
   dotty git propose --browse --copy
 ```
 
 ### Options
 
 ```
-      --all      propose every layer in the stack, not only through the current branch
-      --browse   open each proposed pull request in the browser
-      --copy     copy the proposed pull request URL(s) to the clipboard
-  -h, --help     help for propose
+      --all               propose every layer in the stack, not only through the current branch
+      --auto-merge mode   auto-merge each proposed pull request with the given method (merge, rebase, or squash); mode comment posts a /auto-merge comment for a merge bot instead
+      --browse            open each proposed pull request in the browser
+      --copy              copy the proposed pull request URL(s) to the clipboard
+  -h, --help              help for propose
 ```
 
 ### Options inherited from parent commands

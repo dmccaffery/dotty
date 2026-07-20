@@ -6,7 +6,7 @@ dotty-git-propose - Open or update trunk-based PRs for the stack.
 
 
 .SH SYNOPSIS
-\fBdotty git propose [--all] [--browse] [--copy] [flags]\fP
+\fBdotty git propose [--all] [--auto-merge=merge|rebase|squash|comment] [--browse] [--copy] [flags]\fP
 
 
 .SH DESCRIPTION
@@ -27,15 +27,26 @@ Each PR body includes a stack map with links. For multi-commit layers you pick
 which commit supplies the title and description.
 
 .PP
+With --auto-merge=, each proposed PR is flagged to merge
+automatically with that method once its requirements pass. If the repository
+has auto-merge switched off, or disallows the chosen method, propose warns and
+continues. --auto-merge=comment instead posts a \fB/auto-merge\fR comment
+on each PR, for repositories where a merge bot watches for it.
+
+.PP
 With --browse, each proposed PR opens in your browser afterwards; with --copy,
-the PR URLs (one per line) land on your clipboard. Make either the default via
-git configuration: \fBgit config set dotty.propose.browse true\fR (and
-dotty.propose.copy).
+the PR URLs (one per line) land on your clipboard. Make any of these the
+default via git configuration: \fBgit config set dotty.propose.browse true\fR
+(and dotty.propose.copy, dotty.propose.auto-merge).
 
 
 .SH OPTIONS
 \fB--all\fP[=false]
 	propose every layer in the stack, not only through the current branch
+
+.PP
+\fB--auto-merge\fP=
+	auto-merge each proposed pull request with the given method (merge, rebase, or squash); mode comment posts a /auto-merge comment for a merge bot instead
 
 .PP
 \fB--browse\fP[=false]
@@ -59,6 +70,8 @@ dotty.propose.copy).
 .EX
   dotty git propose
   dotty git propose --all
+  dotty git propose --auto-merge=rebase
+  dotty git propose --auto-merge=comment
   dotty git propose --browse --copy
 .EE
 
