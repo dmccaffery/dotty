@@ -25,3 +25,28 @@ func ConfigLookup(ctx context.Context, r Runner, key string) (value string, foun
 	value = strings.TrimSpace(string(out))
 	return value, value != "", nil
 }
+
+// ConfigLookupBool reads key as a git boolean, canonicalized to "true" or
+// "false". It understands git's full boolean vocabulary (true/false, yes/no,
+// on/off, numbers) including the valueless `[section] key` form, which git
+// defines as true. A value git cannot read as a boolean is an error. As with
+// ConfigLookup, an unset key yields ("", false, nil).
+func ConfigLookupBool(ctx context.Context, r Runner, key string) (value string, found bool, err error) {
+	// The raw lookup distinguishes a stored value from nothing; the typed
+	// lookup canonicalizes it. Both are needed: --type=bool alone folds the
+	// unset case into "false" (via --default ""), while the raw form reads a
+	// valueless key — implicit true — as empty output.
+	_, found, err = ConfigLookup(ctx, r, key)
+	if err != nil {
+		return "", false, err
+	}
+	out, err := r.Output(ctx, "git", "config", "--default", "", "--type=bool", "--get", key)
+	if err != nil {
+		return "", false, fmt.Errorf("read git config %s as bool: %w", key, err)
+	}
+	value = strings.TrimSpace(string(out))
+	if !found && value != "true" {
+		return "", false, nil // no raw value and no valueless key: unset
+	}
+	return value, true, nil
+}

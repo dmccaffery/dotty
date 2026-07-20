@@ -13,6 +13,14 @@ dotty-git - Git helpers built on dotty's commit signing.
 Helpers that drive git through dotty's hardware-backed signing. Set signing
 up first with \fBdotty signing-key sign --print-git-config\fR\&.
 
+.PP
+Every verb's flags can be given persistent defaults through git configuration:
+flag -- on verb  reads dotty.\&. (for example
+\fBgit config set dotty.propose.browse true\fR). A flag passed on the command
+line always wins, and a few flags never read configuration: destructive
+toggles (resign --root) and quantities that only make sense relative to the
+current stack position (merge --up).
+
 
 .SH OPTIONS
 \fB-h\fP, \fB--help\fP[=false]

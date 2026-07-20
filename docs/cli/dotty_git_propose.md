@@ -19,7 +19,9 @@ Each PR body includes a stack map with links. For multi-commit layers you pick
 which commit supplies the title and description.
 
 With --browse, each proposed PR opens in your browser afterwards; with --copy,
-the PR URLs (one per line) land on your clipboard.
+the PR URLs (one per line) land on your clipboard. Make either the default via
+git configuration: `git config set dotty.propose.browse true` (and
+dotty.propose.copy).
 
 ```
 dotty git propose [--all] [--browse] [--copy] [flags]

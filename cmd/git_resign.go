@@ -110,5 +110,8 @@ func init() {
 	gitResignCmd.Flags().BoolVar(&gitResignFlags.AmendHead, "amend-head", false,
 		"internal: amend the current commit during rebase --exec")
 	_ = gitResignCmd.Flags().MarkHidden("amend-head")
+	// A persistent --root default would turn every resign into a full-history
+	// rewrite; it must be asked for explicitly each time.
+	excludeGitConfigFlags(gitResignCmd.Flags(), "root")
 	gitCmd.AddCommand(gitResignCmd)
 }

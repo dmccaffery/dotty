@@ -7,6 +7,13 @@ Git helpers built on dotty's commit signing.
 Helpers that drive git through dotty's hardware-backed signing. Set signing
 up first with `dotty signing-key sign --print-git-config`.
 
+Every verb's flags can be given persistent defaults through git configuration:
+flag --<name> on verb <verb> reads dotty.<verb>.<name> (for example
+`git config set dotty.propose.browse true`). A flag passed on the command
+line always wins, and a few flags never read configuration: destructive
+toggles (resign --root) and quantities that only make sense relative to the
+current stack position (merge --up).
+
 ### Examples
 
 ```

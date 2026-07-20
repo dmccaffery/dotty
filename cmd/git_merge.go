@@ -49,7 +49,7 @@ deleted; the current layer's PR carries the work.`,
 		if gitMergeFlags.All && cmd.Flags().Changed("up") {
 			return errors.New("--all and --up are mutually exclusive")
 		}
-		if cmd.Flags().Changed("up") && gitMergeFlags.Up < 1 {
+		if gitMergeFlags.Up < 1 {
 			return errors.New("--up must be a positive integer")
 		}
 		ios := cli.System()
@@ -65,6 +65,9 @@ func init() {
 		"merge the current layer with this many parents")
 	gitMergeCmd.Flags().BoolVarP(&gitMergeFlags.Yes, "yes", "y", false,
 		"rebase+resign an out-of-sync merge range without prompting")
+	// --up counts layers from the current position in one specific stack — a
+	// positional quantity where a persistent default is meaningless.
+	excludeGitConfigFlags(gitMergeCmd.Flags(), "up")
 	gitCmd.AddCommand(gitMergeCmd)
 }
 
