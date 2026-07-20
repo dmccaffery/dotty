@@ -55,6 +55,13 @@ func LinkHome(ios cli.IOStreams, a scaffold.Answers, repo, home, onConflict stri
 		return report, backupDir, err
 	}
 
+	// Legacy files like ~/.gitconfig and ~/.zshrc shadow the rendered XDG
+	// configuration without occupying any link site, so the conflict flow
+	// above never reaches them; retire them into the same backup set.
+	if err := retireLegacy(home, backupDir, &report); err != nil {
+		return report, backupDir, err
+	}
+
 	configDir, err := cli.ConfigDir()
 	if err != nil {
 		return report, backupDir, err
@@ -190,7 +197,11 @@ func Summarize(ios cli.IOStreams, rep Report, backupDir string) {
 	if len(rep.Skipped) > 0 {
 		tui.Warnf(ios, "Skipped %d conflicting files: %s", len(rep.Skipped), strings.Join(rep.Skipped, ", "))
 	}
-	if len(rep.Backed) > 0 {
-		tui.Infof(ios, "Backed up %d files under %s (restore with dotty dotfiles restore)", len(rep.Backed), backupDir)
+	if len(rep.Retired) > 0 {
+		tui.Infof(ios, "Retired legacy files shadowing the rendered config: %s", strings.Join(rep.Retired, ", "))
+	}
+	if len(rep.Backed) > 0 || len(rep.Retired) > 0 {
+		tui.Infof(ios, "Backed up %d files under %s (restore with dotty dotfiles restore)",
+			len(rep.Backed)+len(rep.Retired), backupDir)
 	}
 }

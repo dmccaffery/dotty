@@ -45,7 +45,9 @@ class — stages it with git (the first commit is left for you to sign), links
 the home/ tree into your home directory, activates the profile (the
 active-profile symlink is the only machine-local state), and installs the
 lobe-icons glyph font. Files already in the way of a link are resolved per
---on-conflict; backups land under $XDG_DATA_HOME/dotty/backups and are
+--on-conflict, and legacy files that shadow the rendered configuration from
+outside any link site (~/.gitconfig, ~/.zshrc and the other bare zsh startup
+files) are retired; backups land under $XDG_DATA_HOME/dotty/backups and are
 restorable with dotty dotfiles restore.
 
 Re-running init against an existing repository and profile walks the same

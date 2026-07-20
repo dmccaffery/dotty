@@ -79,14 +79,15 @@ const (
 type Resolver func(Conflict) (Resolution, error)
 
 // Report summarizes one Apply: sites linked fresh, stale symlinks replaced,
-// conflicts backed up or adopted before linking, conflicts skipped, and how
-// many links were already correct.
+// conflicts backed up or adopted before linking, conflicts skipped, how many
+// links were already correct, and legacy shadows retired into the backup set.
 type Report struct {
 	Linked   []string
 	Replaced []string
 	Backed   []string
 	Adopted  []string
 	Skipped  []string
+	Retired  []string
 	OK       int
 }
 
